@@ -372,6 +372,7 @@ const V3=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+function ss(a,b,x){ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); }
 const SVGNS='http://www.w3.org/2000/svg';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -448,8 +449,8 @@ class Stage{
   resize(force){ const w=this.root.clientWidth, h=this.root.clientHeight; if(w<2||h<2) return; if(!force && w===this._w && h===this._h) return; this._w=w; this._h=h; this.renderer.setSize(w,h,false); this.camera.aspect=w/h; this.camera.updateProjectionMatrix(); this.fitCam(); }
   goalFor(f){ const t=Math.tan(THREE.MathUtils.degToRad(this.camera.fov/2)); const d=Math.max(f.h/2/t, f.w/2/(t*this.camera.aspect))*(f.pad||1.05); return {p:f.c.clone().addScaledVector(f.dir?f.dir.clone().normalize():this.dir,d),c:f.c.clone(),d}; }
   tweenFit(f){ this.fit=f; if(!this._w){ return; } const g=this.goalFor(f); this._ct={k:0,p0:this.camera.position.clone(),c0:this.controls.target.clone(),...g}; }
-  camTween(dt){ const c=this._ct; if(!c) return; c.k=Math.min(1,c.k+dt/1.0); const e=ease(c.k); this.camera.position.lerpVectors(c.p0,c.p,e); this.controls.target.lerpVectors(c.c0,c.c,e); if(c.k>=1){ this._ct=null; this.controls.minDistance=c.d*.35; this.controls.maxDistance=c.d*2; } }
-  fitCam(){ const f=this.fit; if(!f) return; const g=this.goalFor(f); this.camera.position.copy(g.p); this.controls.target.copy(g.c); this.camera.lookAt(g.c); this.controls.minDistance=g.d*.35; this.controls.maxDistance=g.d*2; this.controls.update(); }
+  camTween(dt){ const c=this._ct; if(!c) return; c.k=Math.min(1,c.k+dt/1.0); const e=ease(c.k); this.camera.position.lerpVectors(c.p0,c.p,e); this.controls.target.lerpVectors(c.c0,c.c,e); if(c.k>=1){ this._ct=null; this.controls.minDistance=.1; this.controls.maxDistance=c.d*2; } }
+  fitCam(){ const f=this.fit; if(!f) return; const g=this.goalFor(f); this.camera.position.copy(g.p); this.controls.target.copy(g.c); this.camera.lookAt(g.c); this.controls.minDistance=.1; this.controls.maxDistance=g.d*2; this.controls.update(); }
   pick(e,objs){ const b=this.canvas.getBoundingClientRect(); this.ndc.set((e.clientX-b.left)/b.width*2-1,-(e.clientY-b.top)/b.height*2+1); this.ray.setFromCamera(this.ndc,this.camera); const h=this.ray.intersectObjects(objs,false); return h.find(x=>isVisible(x.object))||null; }
   _pd(e){ ac(); this._down={x:e.clientX,y:e.clientY,t:performance.now()}; }
   _pm(e){ if(e.pointerType==='mouse'&&e.buttons===0&&this.hover) this.hover(e); }
@@ -511,7 +512,7 @@ const ORG={
   '쓸개':{fn:'간에서 만든 소화를 돕는 액체를 모아 두었다가 작은창자로 보내요.',look:'간 아래에 붙은 작은 초록빛 주머니예요.',fact:''},
   '이자':{fn:'소화를 돕는 액체를 만들어 작은창자로 보내요.',look:'위 뒤쪽에 있는 길쭉한 기관이에요.',fact:''},
 };
-const STAGES=[{k:'입',a:0,b:.14},{k:'식도',a:.14,b:.22},{k:'위',a:.22,b:.42},{k:'작은창자',a:.42,b:.70},{k:'큰창자',a:.70,b:.94},{k:'항문',a:.94,b:1}];
+const STAGES=[{k:'입',a:0,b:.17},{k:'식도',a:.17,b:.24},{k:'위',a:.24,b:.42},{k:'작은창자',a:.42,b:.70},{k:'큰창자',a:.70,b:.94},{k:'항문',a:.94,b:1}];
 const TOTAL=36;
 function stageOf(p){ for(let i=0;i<STAGES.length;i++){ const s=STAGES[i]; if(p<s.b||i===STAGES.length-1) return {i,q:clamp((p-s.a)/(s.b-s.a),0,1)}; } }
 const MOUTH=V3(0,1.598,.05), ANUS=V3(0,.856,-.004);
@@ -541,18 +542,28 @@ class DigestScene extends Stage{
     // 얼굴
     
 
-    /* 입: 이, 혀, 입술 */
-    const toothM=new THREE.MeshStandardMaterial({color:'#fffdf6',roughness:.25}), tongueM=om('입','#e2637a',{bs:.6}), lipM=om('입','#e2858d',{bs:.4});
-    const teeth=(y,dir)=>{ const g=new THREE.Group(); for(let i=0;i<12;i++){ const a=-Math.PI*.42+i/11*Math.PI*.84; const t=new THREE.Mesh(new THREE.BoxGeometry(.0065,.009,.006),toothM); t.position.set(Math.sin(a)*.031,0,Math.cos(a)*.026); t.rotation.y=a; g.add(t); } g.position.set(0,y,.04); return g; };
-    this.upperT=teeth(1.607,1); this.lowerJaw=new THREE.Group(); this.lowerJaw.position.set(0,1.62,-.02); this.scene.add(this.upperT,this.lowerJaw);
-    const lt=teeth(1.596,-1); lt.position.sub(this.lowerJaw.position); this.lowerJaw.add(lt);
-    const tongue=sph(.03,tongueM,0,1.588-1.62,.035+.02,.95,.26,1.25); this.lowerJaw.add(tongue);
-    const lips=new THREE.Mesh(new THREE.TorusGeometry(.024,.0065,10,32),lipM); lips.position.set(0,1.601,.083); lips.scale.set(1,.42,1); reg(lips,'입'); this.lips=lips;
-    this.upperT.children.forEach(t=>{ t.userData.org='입'; this.picks.push(t); }); lt.children.forEach(t=>{ t.userData.org='입'; this.picks.push(t); }); tongue.userData.org='입'; this.picks.push(tongue);
+    /* 입: 윗니·아랫니·잇몸·혀·입술 */
+    const toothM=new THREE.MeshStandardMaterial({color:'#fffdf6',roughness:.22}), gumM=om('입','#ea7f90',{bs:.5}), tongueM=om('입','#e2566f',{bs:.9}), lipM=om('입','#d9606e',{bs:.4}), palM=om('입','#c4526a',{bs:.6});
+    const mouth=new THREE.Group(); mouth.position.copy(MOUTH); this.scene.add(mouth); this.mouth=mouth;
+    const TOOTH=new THREE.CapsuleGeometry(.5,.5,4,10); const arch=x=>.03-44*x*x;
+    const pk=m=>{ m.userData.org='입'; this.picks.push(m); return m; };
+    const mkJaw=dir=>{ const g=new THREE.Group(), k=dir<0?.95:1, dz=dir<0?.0022:0;
+      for(let i=0;i<14;i++){ const o=Math.abs(i-6.5), x=.026*Math.sin((i-6.5)/6.5*1.45)/Math.sin(1.45); const front=o<2.1, can=Math.abs(o-2.5)<.1;
+        const w=front?.0058:can?.0052:.0064, dd=front?.0034:can?.0048:.0068, h=front?.0085:can?.0092:.0064;
+        const t=pk(new THREE.Mesh(TOOTH,toothM)); t.position.set(x*k,dir*h/2,arch(x)-dz); t.scale.set(w,h/1.5,dd); t.rotation.y=Math.atan(88*x); g.add(t); }
+      const gp=[]; for(let i=0;i<=16;i++){ const x=-.0275+i/16*.055; gp.push(V3(x*k,dir*.0088,arch(x)-.001-dz)); }
+      g.add(pk(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(gp),40,.0047,10),gumM))); return g; };
+    mouth.add(mkJaw(1)); mouth.add(pk(sph(.027,palM,0,.0105,.004,1,.4,1.25)));
+    this.lowerJaw=new THREE.Group(); this.lowerJaw.position.set(0,.018,-.05); mouth.add(this.lowerJaw);
+    const lj=mkJaw(-1); lj.position.set(0,-.018,.05); this.lowerJaw.add(lj);
+    lj.add(pk(sph(.026,palM,0,-.0125,.004,1,.3,1.2)));
+    this.tongue=pk(sph(1,tongueM,0,-.0048,.002)); this.tongue.scale.set(.0185,.0062,.026); lj.add(this.tongue);
+    this.lipU=pk(new THREE.Mesh(this.lipGeo(.0078,.0006),lipM)); mouth.add(this.lipU);
+    this.lipL=pk(new THREE.Mesh(this.lipGeo(-.0078,-.0006),lipM)); mouth.add(this.lipL);
 
     /* 식도 */
-    this.eso=new Tube([V3(0,1.598,.07),V3(0,1.585,.035),V3(0,1.56,.005),V3(0,1.52,-.018),V3(.001,1.45,-.028),V3(.004,1.38,-.026),V3(.01,1.31,-.018),V3(.022,1.258,-.004),V3(.038,1.228,.012)],
-      {seg:90,rad:14,r:u=>u<.15?.011:.0072,mat:om('식도','#d9636c')});
+    this.eso=new Tube([V3(0,1.597,.012),V3(0,1.586,-.004),V3(0,1.562,-.018),V3(0,1.52,-.026),V3(.001,1.45,-.028),V3(.004,1.38,-.026),V3(.01,1.31,-.018),V3(.022,1.258,-.004),V3(.038,1.228,.012)],
+      {seg:90,rad:14,r:u=>lerp(.0092,.0072,ss(0,.12,u)),mat:om('식도','#d9636c')});
     reg(this.eso.mesh,'식도');
     /* 위 */
     this.sto=new Tube([V3(.034,1.232,.01),V3(.062,1.244,.002),V3(.09,1.224,.014),V3(.099,1.184,.032),V3(.084,1.143,.05),V3(.05,1.122,.06),V3(.012,1.124,.056),V3(-.018,1.136,.046),V3(-.034,1.149,.036)],
@@ -594,7 +605,7 @@ class DigestScene extends Stage{
 
     /* 이름표 */
     const fp=(tube,u)=>()=>tube.at(u).p.clone();
-    this.anchors={'입':()=>V3(0,1.6,.088),'식도':fp(this.eso,.55),'위':fp(this.sto,.4),'작은창자':()=>V3(.045,.975,.07),'큰창자':fp(this.li,.1),'항문':()=>ANUS.clone(),'간':()=>V3(-.1,1.215,.075),'쓸개':()=>V3(-.05,1.155,.09),'이자':fp(this.pan,.75)};
+    this.anchors={'입':()=>V3(0,1.6,.09),'식도':fp(this.eso,.55),'위':fp(this.sto,.4),'작은창자':()=>V3(.045,.975,.07),'큰창자':fp(this.li,.1),'항문':()=>ANUS.clone(),'간':()=>V3(-.1,1.215,.075),'쓸개':()=>V3(-.05,1.155,.09),'이자':fp(this.pan,.75)};
     const LP={'입':[150,0],'식도':[150,-10],'위':[150,-55],'작은창자':[150,10],'큰창자':[-150,0],'항문':[130,10],'간':[-150,-20],'쓸개':[-150,25],'이자':[160,45]};
     this.L={}; for(const k in this.anchors) this.L[k]=this.addLabel({html:k,pos:this.anchors[k],dx:LP[k][0],dy:LP[k][1]});
     this.curL=this.addLabel({html:'',cls:'cur',pos:()=>this.focus.clone(),dx:170,dy:-60,show:false});
@@ -618,6 +629,7 @@ class DigestScene extends Stage{
       const top=sph(.034,M('#d79a45'),0,.012,0,1,.6,1); g.add(top); c(.034,.006,.004,'#58a43a'); c(.035,.004,0,'#f2c230'); c(.033,.012,-.009,'#6b3a1e'); c(.033,.012,-.021,'#d79a45'); }
     if(this.food==='rice'){ const s=new THREE.Shape(); s.moveTo(0,.035); s.quadraticCurveTo(.036,-.026,0,-.028); s.quadraticCurveTo(-.036,-.026,0,.035); const geo=new THREE.ExtrudeGeometry(s,{depth:.022,bevelEnabled:true,bevelSize:.008,bevelThickness:.008,bevelSegments:4}); geo.center(); g.add(new THREE.Mesh(geo,M('#fbfaf3'))); const n=new THREE.Mesh(new THREE.BoxGeometry(.03,.022,.04),M('#1f3a2a')); n.position.y=-.016; g.add(n); }
     if(this.food==='broccoli'){ const st=new THREE.Mesh(new THREE.CylinderGeometry(.008,.011,.035),M('#7fbf5a')); st.position.y=-.015; g.add(st); for(let i=0;i<9;i++){ const a=i/9*Math.PI*2; g.add(sph(.013,M(i%2?'#3e8e3a':'#2f7a2f'),Math.cos(a)*.016*(i?1:0),.01+(i?0:.006),Math.sin(a)*.016*(i?1:0))); } }
+    this.biteM=sph(.0155,M(f.cols[1]),0,.002,-.024,1.05,.9,.8); this.biteM.visible=false; g.add(this.biteM);
     this.cols=f.cols.map(c=>new THREE.Color(c)); }
   setFood(k){ this.food=k; this.buildFood(); this.reset(); }
   /* --- 모드 --- */
@@ -649,7 +661,8 @@ class DigestScene extends Stage{
   togglePause(){ if(!this.started){ this.eat(); return true; } this.playing=!this.playing; return this.playing; }
   jumpTo(i){ this.started=true; this.p=STAGES[i].a+.0001; this.playing=true; this.userT=0; }
   setP(p){ this.started=true; this.p=clamp(p,0,1); }
-  setJaw(j){ this.lowerJaw.rotation.x=j*.32; }
+  lipGeo(yc,ye){ const p=[]; for(let i=0;i<=12;i++){ const x=-.031+i/12*.062, k=1-(x/.031)**2; p.push(V3(x,lerp(ye,yc,Math.pow(k,.8)),.021+.0175*k)); } return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(p),28,.0042,8); }
+  setJaw(j,jx=0){ this.lowerJaw.rotation.x=j*.42; this.lowerJaw.position.x=jx; const drop=Math.sin(j*.42)*.078; if(Math.abs(drop-(this._drop??-1))>.0008){ this._drop=drop; this.lipL.geometry.dispose(); this.lipL.geometry=this.lipGeo(-.0078-drop*.72,-.0006-drop*.06); } }
   update(dt,T){
     this.time+=dt; const sim=this.mode==='sim'||this.mode==='scrub';
     if(this.mode==='explore'&&this.sel){ const ms=this.mats[this.sel]||[]; ms.forEach(m=>m.emissiveIntensity=.22+.14*Math.sin(T*6)); }
@@ -669,26 +682,39 @@ class DigestScene extends Stage{
     return {i,q,p,k:STAGES[i].k,size:sizeP,nut,wat,started:this.started,playing:this.playing}; }
   frame(t){ return t; }
   simulate(si,q,dt,moving){
-    const N=this.N, S=this.seeds, m4=new THREE.Matrix4(), qt=new THREE.Quaternion(), sc=V3(), pos=V3(), F={p:V3(),n:V3(),b:V3(),r:0}, col=new THREE.Color(), tmp=new THREE.Color();
+    const v3t=V3(); const N=this.N, S=this.seeds, m4=new THREE.Matrix4(), qt=new THREE.Quaternion(), sc=V3(), pos=V3(), F={p:V3(),n:V3(),b:V3(),r:0}, col=new THREE.Color(), tmp=new THREE.Color();
     const beige=new THREE.Color('#e9d6a2'), yel=new THREE.Color('#d2a85a'), brown=new THREE.Color('#7a4a22');
     const ctr=V3(); let cn=0;
     // 관 꿈틀거림 초기화
     for(const t of [this.eso,this.sto,this.si,this.li]){ t._d=t._d||false; }
     const resetDyn=t=>{ if(t._d){ t.dyn.fill(1); t._d=false; t._need=true; } };
     const wave=(t,fn)=>{ for(let i=0;i<=t.seg;i++) t.dyn[i]=fn(i/t.seg); t._d=true; t._need=true; };
-    // 음식 모형 (먹기 전 / 깨물기)
-    const fq=si===0?q:1; this.foodG.visible=si===0&&fq<.2;
-    if(this.foodG.visible){ const k=clamp(fq/.18,0,1); this.foodG.position.set(0,1.6+.01*Math.sin(this.time*2)*(1-k),lerp(.25,.075,ease(k))); const s=lerp(1,.75,k); this.foodG.scale.setScalar(s); this.foodG.rotation.y=this.time*.6; }
-    // 턱
-    let jaw=0;
-    if(si===0&&q>.16){ const cq=(q-.18)/.82; jaw=Math.max(0,cq)>0?.5-.5*Math.cos(clamp(cq,0,1)*Math.PI*2*6):0; const ch=Math.floor(clamp(cq,0,1)*6); if(ch!==this._chomp&&cq>0&&cq<1){ this._chomp=ch; if(moving) SFX.crunch(); } }
-    else if(si===0&&q>.1){ jaw=Math.sin((q-.1)/.06*Math.PI)*.9; }
-    this.setJaw(jaw);
+    // 입 단계: 다가옴(A) → 앞니로 베어 물기(Bt) → 어금니로 옮기기(C) → 꼭꼭 씹기(D) → 뭉쳐서 삼키기
+    const A=.12,Bt=.18,C=.27,D=.86; let jaw=0,jx=0,nP=0,cq=0,sideX=.0165,phase='';
+    if(si===0&&this.started){
+      if(q<A){ jaw=ease(clamp((q-.03)/(A-.03),0,1)); phase='아~ 입을 크게 벌려요'; }
+      else if(q<Bt){ const k=(q-A)/(Bt-A); jaw=lerp(1,.34,ease(k)); phase='앞니로 싹둑! 베어 물어요'; if(k>.8) nP=1; }
+      else if(q<C){ const k=(q-Bt)/(C-Bt); jaw=lerp(.34,.6,Math.sin(k*Math.PI/2)); nP=1; phase='혀가 음식물을 어금니 쪽으로 옮겨요'; }
+      else if(q<D){ cq=(q-C)/(D-C)*7; const f=cq%1; jaw=.07+.5*Math.pow(.5+.5*Math.cos(f*Math.PI*2),1.3); jx=Math.sin(f*Math.PI*2)*.0018; nP=Math.min(N,Math.pow(2,Math.floor(cq)+(f>.5?1:0))); sideX=.0165*Math.cos(Math.PI*ss(3.1,3.7,cq)); phase='어금니로 꼭꼭! 잘게 부수고 침과 섞어요'; }
+      else { jaw=lerp(.2,.04,(q-D)/(1-D)); nP=N; sideX=-.0165; phase='혀로 뭉쳐서 꿀꺽!'; }
+      const ci=q<Bt?(q>Bt-.012?1:0):q<C?1:q<D?2+Math.floor(cq+.5):9; if(ci!==this._chomp){ if(ci>this._chomp&&ci>0&&ci<9&&moving) SFX.crunch(); this._chomp=ci; }
+    }
+    if(this.mode==='sim'){ const hud=si===0&&this.started?phase:''; if(hud!==this._hud){ this._hud=hud; this.setHud(hud?`<span class="chip big">${hud}</span>`:''); } }
+    this.setJaw(jaw,jx);
+    const lowY=-Math.sin(jaw*.42)*.056;   // 아래 어금니 윗면 높이(입 기준)
+    this.foodG.visible=si===0&&q<C;
+    if(this.foodG.visible){ const k=ease(clamp(q/A,0,1)), out=ease(clamp((q-Bt)/(C-Bt),0,1)); this.foodG.position.set(0,MOUTH.y-.002+.008*Math.sin(this.time*2)*(1-k)-.03*out,lerp(.26,MOUTH.z+.056,k)+.2*out); this.foodG.scale.setScalar(.82*(1-out)); this.foodG.rotation.y=this.time*.6*(1-k); this.biteM.visible=q>Bt-.012; }
+    const tg=this.tongue; { const sw=si===0?ss(D,1,q):0, tr=si===0&&q>=Bt&&q<C?Math.sin((q-Bt)/(C-Bt)*Math.PI):0; tg.position.set(si===0&&q>=C&&q<D?sideX*.3:0,-.0048+.004*tr+.005*sw,.002-.007*sw); tg.scale.set(.0185,.0062+.002*tr+.002*sw,.026); }
     // 조각들
     for(let i=0;i<N;i++){ const s=S[i]; let vis=true, size=.003; const base=this.cols[s.c%this.cols.length];
-      if(si===0){ if(q<.18) vis=false; else { const cq=(q-.18)/.82; const n=Math.min(N,Math.ceil(Math.pow(2,1+cq*5.6))); vis=i<n;
-          pos.set((s.r-.5)*.042,Math.sin(s.a)*.006-jaw*.005+.002,Math.cos(s.a)*.014+.004).add(MOUTH); pos.y+=Math.sin(this.time*9+i)*.001*jaw;
-          size=(.017/Math.pow(Math.max(1,n),.42))*s.sz+.0012; col.copy(base); } }
+      if(si===0){ vis=i<nP; if(vis){
+          if(q<C){ const k=q<Bt?0:ease((q-Bt)/(C-Bt)); pos.set(lerp(0,sideX,k),lerp(-.004,lowY*.5,k)+.004*Math.sin(k*Math.PI),lerp(.022,.006,k)); size=.0088; }
+          else { const g=-lowY, sp=1+.6*(1-clamp(jaw/.5,0,1));
+            pos.set(sideX+(s.r-.67)*.011*sp+Math.sin(this.time*5+i)*.0004,-g*(.12+.76*s.l)-.0003,.006+(hash(i+9)-.5)*.017*sp);
+            size=(.0088/Math.pow(Math.max(1,nP),.4))*s.sz+.0009;
+            if(q>=D){ const k=(q-D)/(1-D), ga=ease(clamp(k/.55,0,1)), bk=ease(clamp((k-.45)/.55,0,1)); const bx=Math.cos(s.a)*.0055*s.r, by=Math.sin(s.a)*.004*s.r, bz=(hash(i+9)-.5)*.009;
+              pos.lerp(v3t.set(bx,-.003+by+.004*bk,-.004+bz-.034*bk),ga); } }
+          pos.add(MOUTH); col.copy(base).lerp(beige,.3*ss(C,D,q)); } }
       else if(si===1){ const u=ease(q); this.eso.at(u,F); const a=s.a+this.time; pos.copy(F.p).addScaledVector(F.n,Math.cos(a)*.0045*s.r).addScaledVector(F.b,Math.sin(a)*.0045*s.r); size=.006*s.sz; col.copy(base); }
       else if(si===2){ const spread=clamp(q*3.5,0,1); let u=lerp(.02,.1+s.l*.78,ease(spread)); if(q>.72) u=lerp(u,.985,ease((q-.72)/.28)); this.sto.at(u,F); const th=s.a+this.time*(1.1+s.l*.8);
           pos.copy(F.p).addScaledVector(F.n,Math.cos(th)*F.r*.62*s.r*spread).addScaledVector(F.b,Math.sin(th)*F.r*.62*s.r*spread); size=(.0054-.0024*q)*s.sz+.0009; col.copy(base).lerp(beige,clamp(q*1.3,0,1)); }
@@ -713,7 +739,8 @@ class DigestScene extends Stage{
     if(si===3&&q<.45&&this.started){ ['간','쓸개','이자'].forEach(k=>this.mats[k].forEach(mm=>mm.emissiveIntensity=.15+.1*Math.sin(this.time*7))); }
     // 거품 (침, 소화액, 쓸개즙)
     for(let i=0;i<this.NB;i++){ let vis=false; const h1=hash(i+300),h2=hash(i+400),h3=hash(i+500); let size=.002;
-      if(si===0&&q>.18){ const cq=(q-.18)/.82; vis=i<cq*this.NB; pos.set((h1-.5)*.045,(h2-.5)*.012+Math.sin(this.time*3+i)*.002,(h3-.5)*.03+.004).add(MOUTH); size=.0018+h2*.0018; tmp.set('#bfe6ff'); }
+      if(si===0&&q>C){ const pr=ss(C,D,q); vis=i<pr*26; const sw=q>=D?ease(clamp((q-D)/(1-D)/.55,0,1)):0;
+        pos.set(lerp(sideX+(h1-.5)*.016,(h1-.5)*.01,sw),lerp(lowY*h2,-.003+(h2-.5)*.007,sw)+Math.sin(this.time*3+i)*.0006,lerp(.006+(h3-.5)*.022,-.004+(h3-.5)*.01,sw)).add(MOUTH); size=.0011+h2*.0013; tmp.set('#cfeaff'); }
       else if(si===2){ vis=i<q*1.5*this.NB; const u=.1+h1*.8; this.sto.at(u,F); const th=h2*7+this.time*(.7+h3); pos.copy(F.p).addScaledVector(F.n,Math.cos(th)*F.r*.8).addScaledVector(F.b,Math.sin(th)*F.r*.8); size=.0016+h3*.0022; tmp.set('#d8ea6a'); }
       else if(si===3&&q<.5){ vis=i<24; const k=((this.time*.9+h1)%1); const a=V3(-.05,1.155,.08), b=this.si.at(.06).p; pos.lerpVectors(a,b,k); if(i>=12){ const a2=this.pan.at(.1).p; pos.lerpVectors(a2,b,k); } size=.0022; tmp.set(i<12?'#5fae3a':'#f2c34a'); }
       if(vis){ sc.setScalar(size); m4.compose(pos,qt.identity(),sc); } else m4.makeScale(0,0,0);
@@ -732,13 +759,13 @@ class DigestScene extends Stage{
     else { this.poop.visible=false; this.sayL.show=false; }
     // 초점·카메라
     if(cn) ctr.divideScalar(cn); else ctr.copy(si===5?this.poop.position:MOUTH);
-    if(si===0&&q<.18) ctr.copy(this.foodG.visible?this.foodG.position:MOUTH);
+    if(si===0) ctr.copy(MOUTH);
     this.focus.lerp(ctr,1-Math.exp(-dt*6));
-    const o=ORG[cur]; this.curL.show=this.started&&si<5; this.curL.set(`${cur}<small>${o.fn}</small>`);
+    const o=ORG[cur]; this.curL.show=this.started&&si<5&&si>0; this.curL.set(`${cur}<small>${o.fn}</small>`);
     this.curL.dx=si===4?-190:170; this.curL.dy=si===0?-70:-50;
     if(this.follow&&performance.now()-this.userT>3500){
-      const CAM=[{c:MOUTH,d:.3,dir:V3(.9,.12,1)},{c:null,d:.42,dir:V3(.55,.1,1)},{c:V3(.03,1.17,.03),d:.36,dir:V3(.25,.08,1)},{c:V3(0,.99,.04),d:.42,dir:V3(.15,.05,1)},{c:V3(0,1.0,.04),d:.5,dir:V3(.15,.05,1)},{c:V3(0,.82,0),d:.42,dir:V3(.55,-.25,1)}][si];
-      const c=CAM.c?CAM.c.clone():this.focus.clone(); if(si===3||si===4) c.lerp(this.focus,.45); if(si===0&&!this.started) c.copy(V3(0,1.6,.12));
+      const CAM=[{c:V3(MOUTH.x,MOUTH.y-.006,MOUTH.z-.004),d:.25,dir:V3(.85,.22,1)},{c:null,d:.42,dir:V3(.55,.1,1)},{c:V3(.03,1.17,.03),d:.36,dir:V3(.25,.08,1)},{c:V3(0,.99,.04),d:.42,dir:V3(.15,.05,1)},{c:V3(0,1.0,.04),d:.5,dir:V3(.15,.05,1)},{c:V3(0,.82,0),d:.42,dir:V3(.55,-.25,1)}][si];
+      const c=CAM.c?CAM.c.clone():this.focus.clone(); if(si===3||si===4) c.lerp(this.focus,.45); if(si===0&&!this.started) c.copy(V3(0,1.6,.1));
       const asp=Math.max(1,1.15/this.camera.aspect); const want=c.clone().addScaledVector(CAM.dir.clone().normalize(),CAM.d*asp);
       const k=1-Math.exp(-dt*3.4); this.camera.position.lerp(want,k); this.controls.target.lerp(c,k);
     }
@@ -762,7 +789,7 @@ class ChewGame{
   resize(){ const r=window.devicePixelRatio||1; const w=this.root.clientWidth,h=this.root.clientHeight; if(!w) return; this.cv.width=w*r; this.cv.height=h*r; this.cv.style.width=w+'px'; this.cv.style.height=h+'px'; this.W=w; this.H=h; this.g.setTransform(r,0,0,r,0,0); }
   reset(){ const f=FOODS[this.food]; this.cols=f.cols; this.n=0; this.pcs=[{x:0,y:0,r:1,c:0,vx:0,vy:0}]; this.stomach=null; this.swallowT=-1; this.emit(); }
   toast(m,ms=2400){ this.toastEl.innerHTML=m; this.toastEl.classList.add('show'); clearTimeout(this._t); this._t=setTimeout(()=>this.toastEl.classList.remove('show'),ms); }
-  chew(){ if(this.swallowT>=0) return; this.n++; this.jaw=1; SFX.crunch(); const L=this.pcs.slice().sort((a,b)=>b.r-a.r); const k=Math.max(1,Math.ceil(L.length*.5));
+  chew(){ if(this.swallowT>=0) return; this.n++; this.ct=0; SFX.crunch(); const L=this.pcs.slice().sort((a,b)=>b.r-a.r); const k=Math.max(1,Math.ceil(L.length*.5));
     for(let i=0;i<k&&this.pcs.length<90;i++){ const p=L[i]; if(p.r<.05) continue; const r2=p.r/Math.SQRT2; const a=Math.random()*Math.PI*2; p.r=r2; p.x+=Math.cos(a)*r2*.5; p.y+=Math.sin(a)*r2*.5; this.pcs.push({x:p.x-Math.cos(a)*r2,y:p.y-Math.sin(a)*r2,r:r2,c:Math.floor(Math.random()*this.cols.length),vx:rnd(-.5,.5),vy:rnd(-.5,.5)}); }
     this.emit(); }
   swallow(){ if(this.swallowT>=0) return; this.swallowT=0; SFX.gulp(); const n=this.n; let msg;
@@ -773,31 +800,45 @@ class ChewGame{
   stats(){ const S=this.pcs.reduce((a,p)=>a+p.r,0); return {n:this.n,k:this.pcs.length,s:S}; }
   emit(){ this.onState&&this.onState(this.stats(),this.stomach); }
   step(dt){ const g=this.g,W=this.W,H=this.H; if(!W) return; g.clearRect(0,0,W,H);
-    this.jaw=Math.max(0,this.jaw-dt*4); const cx=W/2, cy=H*.52, R=Math.min(W,H)*.36;
-    if(this.swallowT>=0) this.swallowT+=dt;
-    // 입 속
-    const mg=g.createRadialGradient(cx,cy,R*.1,cx,cy,R*1.2); mg.addColorStop(0,'#8e2b3a'); mg.addColorStop(1,'#4a1020'); g.fillStyle=mg; g.beginPath(); g.ellipse(cx,cy,R*1.25,R*.95,0,0,Math.PI*2); g.fill();
-    g.fillStyle='#e2637a'; g.beginPath(); g.ellipse(cx,cy+R*.62,R*.95,R*.42,0,Math.PI,0); g.fill();
-    // 이
-    const jo=this.jaw*R*.28;
-    const teeth=(y,up)=>{ for(let i=0;i<8;i++){ const x=cx-R*1.0+i*R*.285; g.fillStyle='#fffdf4'; g.strokeStyle='#d8d0bf'; g.lineWidth=2; g.beginPath(); if(g.roundRect) g.roundRect(x,y-(up?0:R*.2),R*.25,R*.2,8); else g.rect(x,y-(up?0:R*.2),R*.25,R*.2); g.fill(); g.stroke(); } };
-    teeth(cy-R*.8+jo,true); teeth(cy+R*.8-jo,false);
-    // 조각들
-    const sc=R*.55; const sw=this.swallowT>=0?clamp(this.swallowT/1.0,0,1):0;
-    for(const p of this.pcs){ p.vx*=.9; p.vy*=.9; p.x+=p.vx*dt; p.y+=p.vy*dt; const d=Math.hypot(p.x,p.y); if(d>1.1-p.r){ p.x*=.97; p.y*=.97; }
+    this.ct=(this.ct??9)+dt; const bite=this.ct<.11?this.ct/.11:Math.max(0,1-(this.ct-.11)/.28); if(this.swallowT>=0) this.swallowT+=dt;
+    const sw=this.swallowT>=0?clamp(this.swallowT/.9,0,1):0; const o=(1-.8*bite)*(1-.55*sw);
+    const cx=W/2, cy=H*.52, R=Math.min(W,H)*.33, Wm=R*1.3, Hm=R*.98*(.2+.8*o);
+    const ell=(rx,ry,y=cy)=>{ g.beginPath(); g.ellipse(cx,y,rx,ry,0,0,Math.PI*2); };
+    // 입술
+    const lg=g.createLinearGradient(0,cy-Hm-R*.2,0,cy+Hm+R*.2); lg.addColorStop(0,'#e57a86'); lg.addColorStop(.5,'#c94f5f'); lg.addColorStop(1,'#e88592');
+    ell(Wm+R*.17,Hm+R*.19); g.fillStyle=lg; g.fill(); g.lineWidth=3; g.strokeStyle='#a83a4b'; g.stroke();
+    g.strokeStyle='rgba(255,255,255,.35)'; g.lineWidth=5; g.lineCap='round'; g.beginPath(); g.ellipse(cx,cy,Wm+R*.09,Hm+R*.11,0,Math.PI*1.15,Math.PI*1.45); g.stroke();
+    // 입 안
+    g.save(); ell(Wm,Hm); g.clip();
+    const mg=g.createRadialGradient(cx,cy-Hm*.1,R*.05,cx,cy,Wm); mg.addColorStop(0,'#3a0a14'); mg.addColorStop(.45,'#7a2233'); mg.addColorStop(1,'#a8394c'); g.fillStyle=mg; g.fillRect(cx-Wm,cy-Hm,Wm*2,Hm*2);
+    ell(R*.42,Hm*.42,cy-Hm*.12); g.fillStyle='#2a060e'; g.fill();                                   // 목구멍
+    g.fillStyle='#d9667a'; g.beginPath(); g.ellipse(cx,cy-Hm*.5,R*.09,Hm*.2,0,0,Math.PI*2); g.fill();   // 목젖
+    const ty=cy+Hm*.62; const tgd=g.createLinearGradient(0,ty-Hm*.5,0,ty+Hm*.5); tgd.addColorStop(0,'#f08a9a'); tgd.addColorStop(1,'#d9566c');
+    ell(Wm*.74,Hm*.56,ty); g.fillStyle=tgd; g.fill(); g.strokeStyle='rgba(150,40,60,.45)'; g.lineWidth=3; g.beginPath(); g.moveTo(cx,ty-Hm*.45); g.quadraticCurveTo(cx+4,ty,cx,ty+Hm*.3); g.stroke();
+    // 음식 조각
+    const sc=R*.5;
+    for(const p of this.pcs){ p.vx*=.9; p.vy*=.9; p.x+=p.vx*dt; p.y+=p.vy*dt; const d=Math.hypot(p.x,p.y); if(d>1.15-p.r){ p.x*=.97; p.y*=.97; }
       for(const q of this.pcs){ if(q===p) continue; const dx=p.x-q.x, dy=p.y-q.y, dd=Math.hypot(dx,dy)||.001, m=(p.r+q.r)*.9-dd; if(m>0){ p.x+=dx/dd*m*.25; p.y+=dy/dd*m*.25; } }
-      const x=cx+p.x*sc, y=cy+p.y*sc*.75+sw*sw*H*.8, r=Math.max(2,p.r*sc*.55*(1-sw*.4));
-      g.fillStyle=this.cols[p.c%this.cols.length]; g.strokeStyle='rgba(0,0,0,.25)'; g.lineWidth=1.5; g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill(); g.stroke();
-      g.fillStyle='rgba(255,255,255,.35)'; g.beginPath(); g.arc(x-r*.3,y-r*.35,r*.3,0,Math.PI*2); g.fill(); }
-    // 침
-    if(this.n>0){ g.fillStyle='rgba(190,230,255,.45)'; for(let i=0;i<Math.min(30,this.n*3);i++){ const a=hash(i)*6.28, d=hash(i+9)*R*.8; g.beginPath(); g.arc(cx+Math.cos(a)*d,cy+Math.sin(a)*d*.6+Math.sin(performance.now()/400+i)*3,3+hash(i+3)*5,0,7); g.fill(); } }
-    g.fillStyle='#fff'; g.font='900 20px "Noto Sans KR",sans-serif'; g.textAlign='center';
-    if(this.swallowT<0) g.fillText(this.n===0?'👆 화면을 눌러도 꼭꼭 씹어져요!':`꼭꼭 ${this.n}번!`,cx,cy-R*.42);
+      const k=1-sw*sw; const x=cx+p.x*sc*k, y=lerp(cy-Hm*.12,cy+Hm*.12+p.y*sc*.62*(.25+.75*o),k), r=Math.max(2,p.r*sc*.56*(1-.75*sw))*(1+.12*bite), ry=r*(1-.3*bite);
+      g.fillStyle=this.cols[p.c%this.cols.length]; g.strokeStyle='rgba(0,0,0,.28)'; g.lineWidth=1.5; g.beginPath(); g.ellipse(x,y,r,ry,0,0,Math.PI*2); g.fill(); g.stroke();
+      g.fillStyle='rgba(255,255,255,.4)'; g.beginPath(); g.ellipse(x-r*.3,y-ry*.35,r*.28,ry*.25,0,0,Math.PI*2); g.fill(); }
+    if(this.n>0&&sw<1){ g.fillStyle='rgba(200,235,255,.5)'; for(let i=0;i<Math.min(34,this.n*3);i++){ const a=hash(i)*6.28, d=hash(i+9)*R*.75; g.beginPath(); g.arc(cx+Math.cos(a)*d,cy+Hm*.15+Math.sin(a)*d*.5*o+Math.sin(performance.now()/400+i)*3,3+hash(i+3)*5,0,7); g.fill(); } }
+    // 이 (윗니·아랫니)
+    const nT=10; for(const up of [true,false]) for(let i=0;i<nT;i++){ const u=(i+.5)/nT*2-1, x=cx+u*Wm*.86, front=Math.abs(u)<.42, can=!front&&Math.abs(u)<.62;
+      const edge=Hm*Math.sqrt(Math.max(0,1-(u*.86)**2)), tw=Wm*1.72/nT*.93, th=R*(front?.3:can?.33:.24)*(up?1:.88);
+      const y0=up?cy-edge-R*.06:cy+edge+R*.06, y1=up?y0+th:y0-th; const tg2=g.createLinearGradient(0,y0,0,y1); tg2.addColorStop(0,'#e9dfc8'); tg2.addColorStop(.35,'#fffdf5'); tg2.addColorStop(1,'#ffffff');
+      g.fillStyle=tg2; g.strokeStyle='#cfc4ad'; g.lineWidth=2; g.beginPath(); const rr=can?tw*.5:tw*.3;
+      g.moveTo(x-tw/2,y0); g.lineTo(x-tw/2,y1+(up?-rr:rr)); g.quadraticCurveTo(x-tw/2,y1,x-tw/2+rr,y1); if(can){ g.lineTo(x,y1+(up?4:-4)); } g.lineTo(x+tw/2-rr,y1); g.quadraticCurveTo(x+tw/2,y1,x+tw/2,y1+(up?-rr:rr)); g.lineTo(x+tw/2,y0); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle='rgba(232,121,138,.95)'; g.beginPath(); g.ellipse(x,y0,tw*.56,R*.075,0,0,Math.PI*2); g.fill(); }
+    g.restore();
+    g.fillStyle='#2a2433'; g.font='900 22px "Noto Sans KR",sans-serif'; g.textAlign='center';
+    if(this.swallowT<0) g.fillText(this.n===0?'👆 화면을 눌러도 꼭꼭 씹어져요!':`꼭꼭 ${this.n}번!`,cx,cy-Hm-R*.32); g.shadowBlur=0;
+    if(bite>.95&&!this._fl){ this._fl=true; } if(bite<.5) this._fl=false;
     // 위 반응
-    if(this.stomach&&this.swallowT>.7){ const m=this.stomach; const k=clamp((this.swallowT-.7)/.4,0,1); g.globalAlpha=k;
-      g.fillStyle='rgba(255,255,255,.95)'; g.strokeStyle=m.ok?'#18a058':'#e5484d'; g.lineWidth=4; const bw=Math.min(W*.86,560), bh=150; const bx=cx-bw/2, by=H*.5-bh/2;
+    if(this.stomach&&this.swallowT>.9){ const m=this.stomach; const k=clamp((this.swallowT-.9)/.4,0,1); g.globalAlpha=k;
+      g.fillStyle='rgba(255,255,255,.96)'; g.strokeStyle=m.ok?'#18a058':'#e5484d'; g.lineWidth=4; const bw=Math.min(W*.86,560), bh=150; const bx=cx-bw/2, by=H*.5-bh/2;
       g.beginPath(); if(g.roundRect) g.roundRect(bx,by,bw,bh,24); else g.rect(bx,by,bw,bh); g.fill(); g.stroke();
-      g.font='64px sans-serif'; g.fillText(m.face,bx+60,by+bh/2+22); g.textAlign='left'; g.fillStyle='#2a2433'; g.font='900 19px "Noto Sans KR",sans-serif'; wrap(g,m.t,bx+110,by+52,bw-130,26); g.font='500 15px "Noto Sans KR",sans-serif'; g.fillStyle='#6c6579'; wrap(g,m.sub,bx+110,by+102,bw-130,22); g.globalAlpha=1; g.textAlign='center'; }
+      g.font='64px sans-serif'; g.textAlign='center'; g.fillText(m.face,bx+60,by+bh/2+22); g.textAlign='left'; g.fillStyle='#2a2433'; g.font='900 19px "Noto Sans KR",sans-serif'; wrap(g,m.t,bx+110,by+52,bw-130,26); g.font='500 15px "Noto Sans KR",sans-serif'; g.fillStyle='#6c6579'; wrap(g,m.sub,bx+110,by+102,bw-130,22); g.globalAlpha=1; g.textAlign='center'; }
   }
 }
 function wrap(g,t,x,y,w,lh){ let line=''; for(const ch of t){ const test=line+ch; if(g.measureText(test).width>w&&line){ g.fillText(line,x,y); line=ch; y+=lh; } else line=test; } g.fillText(line,x,y); }

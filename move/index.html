@@ -221,6 +221,7 @@ textarea:focus{outline:none;border-color:var(--lab)}
           <button class="btn" id="skStand">🧍 바로 서기</button>
           <button class="btn hot" id="skBad">🏸 배드민턴 치기</button>
         </div>
+        <div class="row" style="margin-top:8px"><button class="tg" id="skSlow">🐢 느린 동작으로 보기</button></div>
       </div>
       <div class="card info" id="skInfo"></div>
       <div class="card">
@@ -504,7 +505,7 @@ function initTextures(){
 }
 
 /* ---------- 재질 ---------- */
-const boneMat=()=>new THREE.MeshStandardMaterial({color:'#ffffff',map:TEX.bone,roughness:.5,metalness:0,bumpMap:TEX.bone,bumpScale:.8,emissive:'#000000'});
+const boneMat=()=>new THREE.MeshStandardMaterial({color:'#f4ead4',map:TEX.bone,roughness:.58,metalness:0,bumpMap:TEX.bone,bumpScale:.8,emissive:'#000000'});
 const muscleMat=()=>new THREE.MeshPhysicalMaterial({color:'#ffffff',map:TEX.muscle,bumpMap:TEX.muscle,bumpScale:1.5,roughness:.36,clearcoat:.75,clearcoatRoughness:.28,sheen:.4,sheenColor:new THREE.Color('#ff9a90'),emissive:'#ff3a22',emissiveIntensity:0});
 let DARK, DISC, CART;
 function sharedMats(){
@@ -531,6 +532,38 @@ function bar(p1,p2,r,mat){ const d=p2.clone().sub(p1), len=d.length(); const m=n
 function barY(len,r,mat){ return bar(V3(0,0,0),V3(0,-len,0),r,mat); }
 function sph(r,mat,x=0,y=0,z=0,sx=1,sy=1,sz=1){ const m=new THREE.Mesh(SPH,mat); m.position.set(x,y,z); m.scale.set(r*sx,r*sy,r*sz); return m; }
 function tube(pts,r,mat,seg=28){ return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),seg,r,7),mat); }
+
+function ss(a,b,x){ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); }
+function ellTube(pts,rx,ry,mat,seg=40,rad=10,up=V3(0,1,0)){
+  const curve=new THREE.CatmullRomCurve3(pts,false,'centripetal'); const pos=[],idx=[],uv=[]; const t=V3(),s=V3(),u=V3(),p=V3();
+  for(let i=0;i<=seg;i++){ const k=i/seg; curve.getPoint(k,p); curve.getTangent(k,t); s.crossVectors(t,up); if(s.lengthSq()<1e-6) s.set(1,0,0); s.normalize(); u.crossVectors(t,s).normalize();
+    const a=typeof rx==='function'?rx(k):rx, b=typeof ry==='function'?ry(k):ry;
+    for(let j=0;j<=rad;j++){ const th=j/rad*Math.PI*2, c=Math.cos(th)*a, d=Math.sin(th)*b; pos.push(p.x+s.x*c+u.x*d,p.y+s.y*c+u.y*d,p.z+s.z*c+u.z*d); uv.push(k*3,j/rad);
+      if(i<seg&&j<rad){ const A=i*(rad+1)+j,B=A+rad+1; idx.push(A,B,A+1,B,B+1,A+1); } } }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); g.setIndex(idx); g.computeVertexNormals();
+  return new THREE.Mesh(g,mat); }
+function makeSkullGeo(){
+  const g=new THREE.SphereGeometry(1,168,128); g.rotateY(-Math.PI/2); const pos=g.attributes.position, col=new Float32Array(pos.count*3), d=V3();
+  let ax=0; const angTo=(x,y,z)=>{ const l=Math.hypot(x,y,z); return Math.acos(clamp((ax*x+d.y*y+d.z*z)/l,-1,1)); };
+  const F=[0,-.042,.035], Rr=[.056,.068,.06];
+  for(let i=0;i<pos.count;i++){ d.fromBufferAttribute(pos,i).normalize(); ax=Math.abs(d.x);
+    const a=.0735,b=d.y>=0?.07:.052,c=d.z>=0?.088:.096;
+    let r=1/Math.sqrt((d.x/a)**2+(d.y/b)**2+(d.z/c)**2);
+    const A=(d.x/Rr[0])**2+(d.y/Rr[1])**2+(d.z/Rr[2])**2, Bq=-2*(d.y*F[1]/Rr[1]**2+d.z*F[2]/Rr[2]**2), Cq=(F[1]/Rr[1])**2+(F[2]/Rr[2])**2-1;
+    const rf=(-Bq+Math.sqrt(Math.max(0,Bq*Bq-4*A*Cq)))/(2*A);
+    const k=.01, h=clamp(.5+.5*(rf-r)/k,0,1); r=lerp(r,rf,h)+k*h*(1-h);
+    if(d.y<0) r=Math.min(r,-.087/d.y);
+    let shade=1;
+    r+=.013*Math.exp(-((angTo(.058,-.036,.055)/.2)**2));                 // 광대뼈
+    r+=.0045*Math.exp(-((angTo(.032,.022,.085)/.13)**2));                // 눈썹뼈
+    r-=.006*Math.exp(-((angTo(.07,-.012,.028)/.28)**2));                 // 관자
+    r+=.007*Math.exp(-((angTo(.055,-.05,-.03)/.14)**2));                 // 귀 뒤 돌기
+    const e=angTo(.036,-.012,.078); const so=1-ss(.165,.225,e);            // 눈구멍
+    r-=.038*so; r+=.0022*Math.exp(-(((e-.27)/.04)**2)); shade*=1-.93*Math.pow(so,.7);
+    if(d.z>0){ const lx=Math.asin(clamp(d.x,-1,1)), ly=Math.atan2(-d.y,d.z)-.5; const wx=.055+.05*ss(-.12,.1,ly); const e2=Math.hypot(lx/wx,ly/.135); const no=1-ss(.7,1,e2); r-=.034*no; shade*=1-.93*Math.pow(no,.7); }   // 코구멍
+    shade*=.74+.26*ss(-.95,-.15,d.y);
+    pos.setXYZ(i,d.x*r,d.y*r,d.z*r); col[i*3]=col[i*3+1]=col[i*3+2]=shade; }
+  g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.computeVertexNormals(); return g; }
 
 /* ---------- 뼈 만들기 (앞 = +z, 아래 = -y, 바깥 = s·x) ---------- */
 function makeHumerus(mat,s){ const g=new THREE.Group();
@@ -640,32 +673,45 @@ function buildBody(parent,opt={}){
 
   /* 머리뼈 */
   const skull=new THREE.Group(); skull.position.set(0,1.628,spineZ(1.62)+.012); T.add(skull); B.skull=skull;
-  { const m=pm('머리뼈'); const S=new THREE.Group();
-    S.add(sph(.1,m,0,.1,-.012,.78,.86,.98));
-    S.add(sph(.06,m,0,.036,.046,.86,.75,.72));
-    S.add(sph(.02,m,.05,.052,.058,1.2,.7,1)); S.add(sph(.02,m,-.05,.052,.058,1.2,.7,1));
-    S.add(sph(.019,m,.064,.075,.0,.6,1.0,1.4)); S.add(sph(.019,m,-.064,.075,.0,.6,1.0,1.4));
-    const mand=new THREE.Mesh(new THREE.TorusGeometry(.044,.0115,10,26,Math.PI),m); mand.geometry.rotateX(Math.PI/2); mand.position.set(0,-.004,.012); mand.scale.set(1,1,1.25); S.add(mand);
-    S.add(bar(V3(.044,-.004,.012),V3(.05,.042,-.004),.011,m)); S.add(bar(V3(-.044,-.004,.012),V3(-.05,.042,-.004),.011,m));
-    const teeth=new THREE.Mesh(new THREE.TorusGeometry(.037,.0075,8,24,Math.PI),new THREE.MeshStandardMaterial({color:'#fffaf0',roughness:.3})); teeth.geometry.rotateX(Math.PI/2); teeth.position.set(0,.014,.03); teeth.scale.set(1,1,1.2); S.add(teeth);
+  { const m=pm('머리뼈'); const mv=m.clone(); mv.vertexColors=true; B.mats['머리뼈'].push(mv);
+    const toothM=new THREE.MeshStandardMaterial({color:'#fffbf2',roughness:.25,emissive:'#000'}); B.mats['머리뼈'].push(toothM);
+    const S=new THREE.Group(); S.position.set(0,.045,.004);
+    S.add(new THREE.Mesh(makeSkullGeo(),mv));
+    for(const s of [-1,1]) S.add(ellTube([V3(s*.058,-.037,.05),V3(s*.068,-.037,.026),V3(s*.07,-.035,-.004),V3(s*.064,-.03,-.024)],.0028,.0055,m,14,8));
+    const jaw=new THREE.Group(); jaw.position.set(0,-.045,-.002); S.add(jaw); B.jaw=jaw;
+    const jp=(x,y,z)=>V3(x,y+.045,z+.002);
+    const bp=[[.048,-.1,-.004],[.043,-.106,.026],[.027,-.11,.06]], mp=[];
+    for(const q of bp) mp.push(jp(-q[0],q[1],q[2])); mp.push(jp(0,-.112,.074)); for(const q of bp.slice().reverse()) mp.push(jp(q[0],q[1],q[2]));
+    jaw.add(ellTube(mp,k=>.0055+.0012*Math.sin(Math.PI*k),k=>.0125+.002*Math.sin(Math.PI*k),m,60,12));
+    for(const s of [-1,1]) jaw.add(ellTube([jp(s*.05,-.04,-.005),jp(s*.0505,-.068,-.008),jp(s*.049,-.09,-.008),jp(s*.048,-.107,-.004)],.0045,k=>.008+.0065*ss(0,.35,k),m,24,10,V3(0,0,1)));
+    for(const s of [-1,1]) jaw.add(sph(.0075,m,s*.05,-.04+.045,-.005+.002,1,.8,1.1));
+    jaw.add(sph(.009,m,0,-.119+.045,.078+.002,1.7,.8,.5));
+    const TOOTH=new THREE.CapsuleGeometry(.5,.5,4,10);
+    const tooth=(par,x,y,z,w,h,dd,ry)=>{ const t=new THREE.Mesh(TOOTH,toothM); t.position.set(x,y,z); t.scale.set(w,h/1.5,dd); t.rotation.y=ry; par.add(t); };
+    for(let i=0;i<14;i++){ const o=Math.abs(i-6.5), x=.035*Math.sin((i-6.5)/6.5*1.45)/Math.sin(1.45), z0=.0835-27*x*x; const front=o<2.1, can=Math.abs(o-2.5)<.1;
+      const w=front?.0074:can?.0066:.0082, dd=front?.0042:can?.006:.0085, h=front?.0105:can?.0115:.008, ry=Math.atan(54*x);
+      tooth(S,x,-.083-h/2,z0-.003,w,h,dd,ry);
+      tooth(jaw,x*.93,-.092-h/2+.045,z0-.0075+.002,w*.9,h,dd*.9,ry); }
+    const holeM=new THREE.MeshStandardMaterial({color:'#1d130c',roughness:1,emissive:'#000'}); B.mats['머리뼈'].push(holeM);
+    for(const s of [-1,1]){ const dv=V3(s*.036,-.012,.078).normalize().multiplyScalar(.056); const hm=sph(.0165,holeM,dv.x,dv.y,dv.z,1.05,1,.8); hm.userData.noShadow=true; S.add(hm); }
+    { const dv=V3(0,-.05,.09).normalize().multiplyScalar(.068); const hm=sph(.0105,holeM,dv.x,dv.y,dv.z,.8,1.25,.8); hm.userData.noShadow=true; S.add(hm); }
     add(S,'머리뼈',skull);
-    const EYE=DARK.clone(); B.mats['머리뼈'].push(EYE); const eyes=new THREE.Group(); eyes.add(sph(.02,EYE,.03,.073,.074,1.05,.95,.55)); eyes.add(sph(.02,EYE,-.03,.073,.074,1.05,.95,.55)); eyes.add(sph(.011,EYE,0,.045,.088,.75,1.25,.45)); add(eyes,'머리뼈',skull);
   }
   /* 갈비뼈 + 복장뼈 */
-  { const m=pm('갈비뼈'); CART=new THREE.MeshStandardMaterial({color:'#9cc4ea',roughness:.4,emissive:'#000'}); B.mats['갈비뼈'].push(CART);
-    const W=[.075,.098,.113,.124,.132,.137,.139,.138,.134,.126,.112,.095];
+  { const m=pm('갈비뼈'); CART=new THREE.MeshStandardMaterial({color:'#a9c8e2',roughness:.45,emissive:'#000'}); B.mats['갈비뼈'].push(CART);
+    const W=[.07,.096,.114,.127,.136,.141,.143,.141,.136,.126,.11,.092]; const tp=k=>.55+.45*ss(0,.12,k);
     for(let i=0;i<12;i++){ const y=1.4595-i*.0245, zs=spineZ(y), w=W[i];
       for(const s of [-1,1]){
-        const p0=V3(s*.015,y,zs), p1=V3(s*w*.55,y+.006,zs-.028), p2=V3(s*w,y-.022,zs+.035);
-        if(i>=10){ const p3=V3(s*w*.86,y-.05,zs+.09); add(tube([p0,p1,p2,p3],.0058,m),'갈비뼈',T); continue; }
-        const fx=.5+Math.max(0,i-3)*.05; const p3=V3(s*w*.86,y-.045-i*.004,zs+.115), p4=V3(s*w*fx,y-.058-i*.0055,zs+.152);
-        add(tube([p0,p1,p2,p3,p4],.0062,m),'갈비뼈',T);
-        let e; if(i<=6) e=V3(s*.017,1.448-i*.022,.112); else e=V3(s*(.034+(i-7)*.02),1.3-(i-7)*.026,.102);
-        const c1=p4.clone().lerp(e,.5); c1.z+=.008;
-        add(tube([p4,c1,e],.0058,CART,14),'갈비뼈',T);
+        const p0=V3(s*.016,y,zs-.004), p1=V3(s*w*.5,y+.008,zs-.034), p2=V3(s*w*.95,y-.014,zs+.012);
+        if(i>=10){ const p3=V3(s*w*.98,y-.04,zs+.07), p4=V3(s*w*.8,y-.055,zs+.105); add(ellTube([p0,p1,p2,p3,p4],k=>.0036*tp(k),k=>.0062*tp(k)*(1-.5*ss(.8,1,k)),m,26,8),'갈비뼈',T); continue; }
+        const fx=.5+Math.max(0,i-3)*.05; const p3=V3(s*w*.99,y-.036-i*.003,zs+.075), p4=V3(s*w*.84,y-.05-i*.004,zs+.122), p5=V3(s*w*fx,y-.06-i*.0055,zs+.155);
+        add(ellTube([p0,p1,p2,p3,p4,p5],k=>.0036*tp(k),k=>.0066*tp(k),m,34,8),'갈비뼈',T);
+        let e; if(i<=6) e=V3(s*.019,1.446-i*.0225,.113); else e=V3(s*(.034+(i-7)*.02),1.3-(i-7)*.026,.102);
+        const c1=p5.clone().lerp(e,.5); c1.z+=.008;
+        add(ellTube([p5,c1,e],.0034,.0058,CART,12,8),'갈비뼈',T);
       } }
-    const st=bar(V3(0,1.455,.112),V3(0,1.29,.118),.011,m); st.scale.set(2.5,1,.6); add(st,'갈비뼈',T);
-    add(bar(V3(0,1.29,.118),V3(0,1.26,.112),.006,CART),'갈비뼈',T);
+    const sh=new THREE.Shape(); sh.moveTo(-.03,0); sh.quadraticCurveTo(0,-.008,.03,0); sh.lineTo(.026,-.04); sh.lineTo(.015,-.052); sh.lineTo(.018,-.15); sh.lineTo(.008,-.172); sh.lineTo(0,-.195); sh.lineTo(-.008,-.172); sh.lineTo(-.018,-.15); sh.lineTo(-.015,-.052); sh.lineTo(-.026,-.04); sh.closePath();
+    const st=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.008,bevelEnabled:true,bevelThickness:.003,bevelSize:.003,bevelSegments:3}),m); st.position.set(0,1.47,.103); st.rotation.x=-.085; add(st,'갈비뼈',T);
   }
   /* 빗장뼈, 어깨뼈 */
   { const m=pm('어깨뼈');
@@ -678,16 +724,24 @@ function buildBody(parent,opt={}){
     } }
   /* 골반 */
   { const m=pm('골반뼈'); const m2=m.clone(); m2.side=THREE.DoubleSide; B.mats['골반뼈'].push(m2);
-    const prof=[[.05,.885],[.062,.915],[.085,.95],[.11,.99],[.128,1.03],[.132,1.055],[.12,1.068]].map(p=>new THREE.Vector2(p[0],p[1]));
-    const bowl=new THREE.Mesh(new THREE.LatheGeometry(prof,40,.75,Math.PI*2-1.5),m2); bowl.scale.set(1,1,.62); bowl.position.z=-.012; add(bowl,'골반뼈',T);
-    const rim=new THREE.Mesh(new THREE.TorusGeometry(.124,.008,8,40,Math.PI*2-1.6),m); rim.rotation.set(Math.PI/2,0,Math.PI/2+.8); rim.position.set(0,1.064,-.012); rim.scale.set(1,.62,1); add(rim,'골반뼈',T);
     for(const s of [-1,1]){
-      const ob=new THREE.Mesh(new THREE.TorusGeometry(.026,.0095,10,24),m); ob.position.set(s*.05,.885,.035); ob.rotation.set(0,s*.55,0); ob.scale.set(.9,1.15,1); add(ob,'골반뼈',T);
-      add(sph(.025,m,s*.084,.94,.0),'골반뼈',T);
-      add(sph(.018,m,s*.058,.86,-.005,1,1.3,1),'골반뼈',T);
+      const NU=24,NV=10,P=[],I=[],crest=[],Rr=.137;
+      for(let iu=0;iu<=NU;iu++){ const u=iu/NU; for(let iv=0;iv<=NV;iv++){ const v=iv/NV;
+          const ph=lerp(.35,lerp(-.6,1.3,u),1-.5*v), rv=Rr*(1-.4*Math.pow(v,1.2)), yc=1.03+.042*Math.pow(Math.sin(Math.PI*u),.8);
+          const x=s*rv*Math.cos(ph), z=-rv*.64*Math.sin(ph)-.012, y=lerp(yc,.945,v);
+          P.push(x,y,z); if(iv===0) crest.push(V3(x,y,z));
+          if(iu<NU&&iv<NV){ const a=iu*(NV+1)+iv,b=a+NV+1; I.push(a,b,a+1,b,b+1,a+1); } } }
+      const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); g.setIndex(I); g.computeVertexNormals();
+      add(new THREE.Mesh(g,m2),'골반뼈',T);
+      add(ellTube(crest,.0065,.0065,m,30,8),'골반뼈',T);
+      add(ellTube([V3(s*.07,.94,.02),V3(s*.042,.922,.056),V3(s*.01,.905,.066),V3(s*.016,.876,.05),V3(s*.045,.855,.012),V3(s*.066,.872,-.02),V3(s*.078,.915,-.012),V3(s*.07,.94,.02)],.0085,.011,m,40,10),'골반뼈',T);
+      add(sph(.03,m,s*.072,.948,0,.75,1,1),'골반뼈',T);
     }
-    add(bar(V3(-.026,.905,.052),V3(.026,.905,.052),.011,m),'골반뼈',T);
-    const sac=new THREE.Mesh(new THREE.ConeGeometry(.052,.14,6),m); sac.rotation.set(Math.PI-.35,0,0); sac.position.set(0,.955,-.055); sac.scale.set(1,1,.5); add(sac,'골반뼈',T);
+    add(sph(.012,m,0,.903,.066,1,1.3,.8),'골반뼈',T);
+    const sc=new THREE.Shape(); sc.moveTo(-.055,0); sc.lineTo(.055,0); sc.lineTo(.03,-.07); sc.lineTo(.008,-.115); sc.lineTo(-.008,-.115); sc.lineTo(-.03,-.07); sc.closePath();
+    const sg=new THREE.ExtrudeGeometry(sc,{depth:.018,bevelEnabled:true,bevelThickness:.004,bevelSize:.004,bevelSegments:3}); sg.translate(0,0,-.009);
+    const sac=new THREE.Mesh(sg,m); sac.position.set(0,1.0,-.05); sac.rotation.x=.32; add(sac,'골반뼈',T);
+    add(bar(V3(0,.892,-.086),V3(0,.868,-.08),.006,m),'골반뼈',T);
   }
   /* 팔, 다리 */
   for(const s of [-1,1]){ const k=s<0?'R':'L'; const J={};
@@ -712,7 +766,7 @@ function buildBody(parent,opt={}){
 
   /* 몸속 기관 */
   { const brain=new THREE.Mesh(SPH,new THREE.MeshStandardMaterial({color:'#ffffff',map:TEX.brain,bumpMap:TEX.brain,bumpScale:3,roughness:.6}));
-    brain.scale.set(.068,.064,.084); brain.position.set(0,.105,-.012); skull.add(brain); B.organs.brain=brain;
+    brain.scale.set(.063,.058,.082); brain.position.set(0,.052,-.004); skull.add(brain); B.organs.brain=brain;
     const heartM=new THREE.MeshPhysicalMaterial({color:'#b71c2c',roughness:.35,clearcoat:.6});
     const heart=new THREE.Group(); heart.add(sph(.04,heartM,0,0,0,1,1.18,.95)); heart.add(sph(.03,heartM,-.018,.022,-.004));
     const ao=new THREE.Mesh(new THREE.TorusGeometry(.018,.0065,8,16,Math.PI),heartM); ao.position.set(.0,.045,-.01); heart.add(ao);
@@ -731,7 +785,7 @@ function buildBody(parent,opt={}){
       mus({name:'아래팔 근육',a:J.elbow,la:V3(s*.012,.0,.016),b:J.wrist,lb:V3(0,.0,.008),rx:.02,rz:.017});
       mus({name:'아래팔 근육',a:J.elbow,la:V3(-s*.01,-.005,-.012),b:J.wrist,lb:V3(-s*.004,.0,-.006),rx:.016,rz:.014,face:V3(0,0,-1)});
       mus({name:'가슴 근육',a:T,la:V3(s*.045,1.39,.13),b:J.shRot,lb:V3(0,-.06,.016),rx:.055,rz:.016,face:V3(0,0,1),bul:.3});
-      mus({name:'목 근육',a:skull,la:V3(s*.046,.055,-.02),b:T,lb:V3(s*.022,1.468,.1),rx:.011,rz:.01,face:V3(s,0,0)});
+      mus({name:'목 근육',a:skull,la:V3(s*.055,-.004,-.022),b:T,lb:V3(s*.022,1.468,.1),rx:.011,rz:.01,face:V3(s,0,0)});
       mus({name:'넓적다리 앞쪽 근육',a:J.hipAbd,la:V3(0,-.07,.04),b:J.knee,lb:V3(0,.0,.052),rx:.045,rz:.04});
       mus({name:'넓적다리 뒤쪽 근육',a:J.hipAbd,la:V3(0,-.11,-.036),b:J.knee,lb:V3(0,-.055,-.032),rx:.04,rz:.036,face:V3(0,0,-1)});
       mus({name:'종아리 근육',a:J.hipAbd,la:V3(0,-.405,-.035),b:J.ankle,lb:V3(0,-.03,-.055),rx:.036,rz:.033,face:V3(0,0,-1)});
@@ -760,8 +814,10 @@ class Stage{
     this.scene=new THREE.Scene();
     this.camera=new THREE.PerspectiveCamera(o.fov||35,1,.01,200);
     const pm=new THREE.PMREMGenerator(r); this.scene.environment=pm.fromScene(new RoomEnvironment(),.04).texture; this.scene.environmentIntensity=o.envI??.55;
-    this.scene.add(new THREE.HemisphereLight('#ffffff','#bfb6aa',.9));
-    const key=new THREE.DirectionalLight('#fff6ec',1.9); key.position.set(2,4,5); this.scene.add(key); this.key=key;
+    this.scene.add(new THREE.HemisphereLight('#ffffff','#b3a898',o.shadow?.62:.9));
+    const key=new THREE.DirectionalLight('#fff6ec',o.shadow?2.3:1.9); key.position.set(2,4,5); this.scene.add(key); this.key=key;
+    if(o.shadow){ r.shadowMap.enabled=true; r.shadowMap.type=THREE.PCFSoftShadowMap; key.castShadow=true; key.shadow.mapSize.set(2048,2048); const c=key.shadow.camera, z=o.shadow.size; c.left=-z; c.right=z; c.top=z; c.bottom=-z; c.near=.5; c.far=16; key.shadow.bias=-.0004; key.shadow.normalBias=.004; key.shadow.radius=3;
+      const tg=o.shadow.target||V3(0,1,0); key.target.position.copy(tg); key.position.copy(tg).add(V3(2.2,4,5)); this.scene.add(key.target); }
     const fill=new THREE.DirectionalLight('#dfe8ff',.6); fill.position.set(-4,1,2); this.scene.add(fill);
     const rim=new THREE.DirectionalLight('#ffffff',1.1); rim.position.set(-1,3,-4); this.scene.add(rim);
     this.ray=new THREE.Raycaster(); this.ndc=new THREE.Vector2(); this.labels=[];
@@ -775,7 +831,7 @@ class Stage{
     this.active=false; this._tt=0;
   }
   mount(el){ const boot=el.querySelector('.boot'); if(boot) boot.remove(); if(this.root.parentNode!==el) el.appendChild(this.root); requestAnimationFrame(()=>this.resize(true)); this.start(); }
-  start(){ if(this.active) return; this.active=true; this.last=performance.now(); const loop=t=>{ if(!this.active) return; const dt=Math.min(.05,Math.max(0,(t-this.last)/1000)); this.last=t; this.update&&this.update(dt,t/1000); this.camTween(dt); this.controls.update(); this.renderer.render(this.scene,this.camera); this.updateLabels(); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+  start(){ if(this.active) return; this.active=true; this.last=performance.now(); const loop=t=>{ if(!this.active) return; const dt=Math.min(.05,Math.max(0,(t-this.last)/1000)); this.last=t; this.update&&this.update(dt,t/1000); this.fpsGuard(dt); this.camTween(dt); this.controls.update(); this.renderer.render(this.scene,this.camera); this.updateLabels(); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
   stop(){ this.active=false; }
   resize(force){ const w=this.root.clientWidth, h=this.root.clientHeight; if(w<2||h<2) return; if(!force && w===this._w && h===this._h) return; this._w=w; this._h=h; this.renderer.setSize(w,h,false); this.camera.aspect=w/h; this.camera.updateProjectionMatrix(); this.fitCam(); }
   goalFor(f){ const t=Math.tan(THREE.MathUtils.degToRad(this.camera.fov/2)); const d=Math.max(f.h/2/t, f.w/2/(t*this.camera.aspect))*(f.pad||1.05); return {p:f.c.clone().addScaledVector(this.dir,d),c:f.c.clone(),d}; }
@@ -799,35 +855,67 @@ class Stage{
       L.ln.setAttribute('x1',x); L.ln.setAttribute('y1',y); L.ln.setAttribute('x2',lx); L.ln.setAttribute('y2',ly); } }
   toast(msg,ms=2200){ this.toastEl.innerHTML=msg; this.toastEl.classList.add('show'); clearTimeout(this._tt); this._tt=setTimeout(()=>this.toastEl.classList.remove('show'),ms); }
   setHud(html){ this.hud.innerHTML=html; }
-  addFloor(y=0,r=.7){ const m=new THREE.Mesh(new THREE.PlaneGeometry(r*2,r*2),new THREE.MeshBasicMaterial({map:TEX.shadow,transparent:true,depthWrite:false})); m.rotation.x=-Math.PI/2; m.position.y=y+.001; this.scene.add(m); return m; }
+  fpsGuard(dt){ if(!this.o.shadow||this._fg||window.__keepShadow) return; this._fn=(this._fn||0)+1; if(this._fn<=40) return; this._fs=(this._fs||0)+dt; if(this._fn>=130){ this._fg=true; if(this._fs/90>1/21){ this.key.castShadow=false; this.renderer.shadowMap.enabled=false; this.scene.traverse(o=>{ if(o.material) o.material.needsUpdate=true; }); } } }
+  castAll(){ this.scene.traverse(o=>{ if(o.isMesh&&o.material&&!o.material.transparent&&!o.userData.noShadow){ o.castShadow=true; o.receiveShadow=true; } }); }
+  addFloor(y=0,r=.7){  const m=new THREE.Mesh(new THREE.PlaneGeometry(r*2,r*2),new THREE.MeshBasicMaterial({map:TEX.shadow,transparent:true,depthWrite:false})); m.rotation.x=-Math.PI/2; m.position.y=y+.001; this.scene.add(m); return m; }
 }
 function isVisible(o){ while(o){ if(o.visible===false) return false; o=o.parent; } return true; }
 
 /* ==================================================================
    ① 전신 골격 장면
 ================================================================== */
-const POSES={
-  stand:{RAbd:.13,RFlex:.02,RRot:0,RElb:.18,LAbd:.13,LFlex:.02,LRot:0,LElb:.18,RHip:0,RKnee:.02,LHip:0,LKnee:.02,RHipAbd:.03,LHipAbd:.03,tw:0,lift:0,lean:0},
-  ready:{RAbd:1.6,RFlex:.3,RRot:1.75,RElb:1.9,LAbd:.35,LFlex:2.45,LRot:0,LElb:.25,RHip:.15,RKnee:.25,LHip:.25,LKnee:1.35,RHipAbd:.05,LHipAbd:.05,tw:-.35,lift:.02,lean:-.08},
-  hit:{RAbd:2.5,RFlex:.55,RRot:1.2,RElb:.1,LAbd:.25,LFlex:.9,LRot:0,LElb:.9,RHip:.6,RKnee:1.0,LHip:.05,LKnee:.45,RHipAbd:.05,LHipAbd:.05,tw:.35,lift:.09,lean:.05},
-  follow:{RAbd:.9,RFlex:1.2,RRot:.4,RElb:.7,LAbd:.2,LFlex:.35,LRot:0,LElb:.6,RHip:.25,RKnee:.5,LHip:.2,LKnee:.45,RHipAbd:.05,LHipAbd:.05,tw:.3,lift:0,lean:.12},
-};
-const BAD_KF=[[0,'stand'],[.85,'ready'],[1.45,'ready'],[1.62,'hit'],[1.95,'follow'],[2.85,'stand'],[3.5,'stand']];
+const N3=a=>V3(a[0],a[1],a[2]).normalize();
+const STAND={UR:[-.13,-1,.02],FR:[-.1,-1,.2],UL:[.13,-1,.02],FL:[.1,-1,.2],TR:[-.03,-1,0],SR:[-.02,-1,-.03],TL:[.03,-1,0],SL:[.02,-1,-.03],tw:0,lean:0,side:0,jump:0,head:0,RW:0,RA:0,LA:0};
+/* 배드민턴 점프 스매시: 몸 기준이 아닌 화면(세계) 기준 방향으로 팔·다리 방향을 적는다. U=위팔, F=아래팔, T=넓적다리, S=종아리 */
+const T_OFF=.9, T_LAND=1.62, T_HIT=1.27, JUMP_H=.3;
+const BAD=[
+ {t:0,...STAND},
+ {t:.5, UR:[-.8,.0,-.6], FR:[-.3,.93,-.2], UL:[.45,.68,.58], FL:[.32,.86,.4], TR:[-.28,-.84,.3], SR:[-.06,-.9,-.43], TL:[.24,-.84,.42], SL:[.03,-.9,-.43], tw:-.75,lean:-.06,side:.05,jump:0,head:.5,RW:-.25,RA:0,LA:0},
+ {t:.72,UR:[-.78,.12,-.6],FR:[-.25,.93,-.27],UL:[.42,.74,.52], FL:[.3,.9,.32], TR:[-.3,-.74,.42], SR:[-.06,-.84,-.54], TL:[.26,-.74,.5], SL:[.03,-.84,-.54], tw:-.78,lean:-.02,side:.05,jump:0,head:.55,RW:-.3,RA:0,LA:0},
+ {t:.9, UR:[-.72,.34,-.6], FR:[-.12,.86,-.5], UL:[.4,.8,.45], FL:[.3,.92,.25], TR:[-.08,-1,.03], SR:[-.03,-1,-.1], TL:[.1,-1,.1], SL:[.03,-1,-.06], tw:-.72,lean:-.08,side:.03,jump:0,head:.6,RW:-.35,RA:.75,LA:.75},
+ {t:1.08,UR:[-.52,.7,-.48], FR:[.28,-.5,-.82], UL:[.6,.38,.6], FL:[.2,.55,.8], TR:[-.08,-.97,-.22], SR:[-.02,-.38,-.92], TL:[.1,-.92,.38], SL:[.02,-.82,-.57], tw:-.55,lean:-.2,side:0,jump:0,head:.65,RW:-.55,RA:.9,LA:.8},
+ {t:1.2, UR:[-.32,.9,.12], FR:[-.05,.55,-.83], UL:[.5,-.2,.62], FL:[-.2,.42,.85], TR:[-.08,-.99,.08], SR:[-.02,-.72,-.69], TL:[.1,-.99,.04], SL:[.02,-.74,-.67], tw:-.12,lean:-.02,side:0,jump:0,head:.55,RW:-.45,RA:.9,LA:.9},
+ {t:1.27,UR:[-.22,.93,.3], FR:[-.16,.93,.34], UL:[.36,-.76,.36], FL:[-.36,.3,.76], TR:[-.08,-.92,.38], SR:[-.02,-.9,-.42], TL:[.1,-.95,-.3], SL:[.02,-.55,-.83], tw:.25,lean:.1,side:0,jump:0,head:.42,RW:.18,RA:.8,LA:.9},
+ {t:1.42,UR:[.02,-.05,1], FR:[.45,-.62,.64], UL:[.36,-.86,-.1], FL:[-.1,-.4,.9], TR:[-.1,-.86,.5], SR:[-.02,-.96,-.28], TL:[.1,-.97,-.2], SL:[.02,-.7,-.71], tw:.6,lean:.26,side:0,jump:0,head:.05,RW:.5,RA:.5,LA:.8},
+ {t:1.62,UR:[.28,-.76,.56], FR:[.7,-.62,.3], UL:[.34,-.9,-.2], FL:[.15,-.6,.75], TR:[-.22,-.8,.55], SR:[0,-.9,-.44], TL:[.16,-.92,-.06], SL:[.05,-.84,-.54], tw:.62,lean:.3,side:0,jump:0,head:-.05,RW:.3,RA:0,LA:0},
+ {t:1.85,UR:[.2,-.84,.48], FR:[.55,-.72,.4], UL:[.3,-.93,-.1], FL:[.18,-.75,.62], TR:[-.2,-.76,.6], SR:[0,-.86,-.5], TL:[.14,-.9,.1], SL:[.04,-.84,-.54], tw:.5,lean:.28,side:0,jump:0,head:0,RW:.1,RA:0,LA:0},
+ {t:2.6,...STAND},
+ {t:3.3,...STAND},
+];
+const BAD_DUR=BAD[BAD.length-1].t;
+function herm(a,b,c,d,t0,t1,t2,t3,u){ const h=t2-t1; const m1=(c-a)/Math.max(1e-6,t2-t0)*h, m2=(d-b)/Math.max(1e-6,t3-t1)*h; const u2=u*u,u3=u2*u; return (2*u3-3*u2+1)*b+(u3-2*u2+u)*m1+(-2*u3+3*u2)*c+(u3-u2)*m2; }
+function samplePose(K,t){ let i=0; while(i<K.length-2&&t>K[i+1].t) i++;
+  const k0=K[Math.max(0,i-1)],k1=K[i],k2=K[i+1],k3=K[Math.min(K.length-1,i+2)]; const u=clamp((t-k1.t)/(k2.t-k1.t),0,1), o={};
+  for(const key in k1){ if(key==='t') continue; const b=k1[key];
+    o[key]=Array.isArray(b)?b.map((_,j)=>herm(k0[key][j],b[j],k2[key][j],k3[key][j],k0.t,k1.t,k2.t,k3.t,u)):herm(k0[key],b,k2[key],k3[key],k0.t,k1.t,k2.t,k3.t,u); }
+  if(K===BAD&&t>T_OFF&&t<T_LAND){ const q=(t-T_OFF)/(T_LAND-T_OFF); o.jump=JUMP_H*4*q*(1-q); }
+  return o; }
+function mixPose(a,b,t){ const o={}; for(const k in a) o[k]=Array.isArray(a[k])?a[k].map((v,j)=>lerp(v,b[k][j],t)):lerp(a[k],b[k],t); return o; }
+const _am=new THREE.Matrix4(), _aq=new THREE.Quaternion(), _hz=V3(0,0,1);
+function aimLimb(J1,J2,U,F,sign){ const ey=U.clone().negate(); const perp=F.clone().addScaledVector(U,-F.dot(U)); const pl=perp.length();
+  const hint=_hz.clone().addScaledVector(U,-U.z); if(hint.lengthSq()<1e-4) hint.set(0,1,0).addScaledVector(U,-U.y); hint.normalize();
+  const w=ss(0,.2,pl); const ez=pl>1e-5?perp.multiplyScalar(sign/pl).lerp(hint,1-w):hint; ez.addScaledVector(U,-ez.dot(U)).normalize();
+  const ex=V3().crossVectors(ey,ez); _am.makeBasis(ex,ey,ez); J1.quaternion.setFromRotationMatrix(_am);
+  const E=Math.acos(clamp(F.dot(U),-1,1)); J2.rotation.set(sign>0?-E:E,0,0); }
 function applyPose(B,p){
-  for(const k of ['R','L']){ const s=k==='R'?-1:1; const J=B.J[k];
-    J.shAbd.rotation.z=s*p[k+'Abd']; J.shFlex.rotation.x=-p[k+'Flex']; J.shRot.rotation.y=s*p[k+'Rot']; J.elbow.rotation.x=-p[k+'Elb'];
-    J.hip.rotation.x=-p[k+'Hip']; J.hipAbd.rotation.z=s*p[k+'HipAbd']; J.knee.rotation.x=p[k+'Knee']; J.ankle.rotation.x=-(p[k+'Hip']-p[k+'Knee'])*.35; }
-  B.pivot.rotation.y=p.tw; B.pivot.rotation.x=p.lean; B.root.position.y=p.lift;
+  const pv=B.pivot; pv.rotation.set(p.lean,p.tw,p.side); const qi=pv.quaternion.clone().invert(); const loc=a=>N3(a).applyQuaternion(qi);
+  for(const k of ['R','L']){ const J=B.J[k]; J.shFlex.rotation.set(0,0,0); J.shRot.rotation.set(0,0,0); J.hipAbd.rotation.set(0,0,0);
+    aimLimb(J.shAbd,J.elbow,loc(p['U'+k]),loc(p['F'+k]),1); aimLimb(J.hip,J.knee,loc(p['T'+k]),loc(p['S'+k]),-1); }
+  B.J.R.wrist.rotation.set(-p.RW,0,0); B.skull.rotation.set(-p.head,-p.tw*.6,0);
+  B.root.position.y=0; B.root.updateMatrixWorld(true); let minY=1e9; const v=V3();
+  for(const k of ['R','L']){ const J=B.J[k]; J.knee.getWorldQuaternion(_aq); const Yy=v.set(0,1,0).applyQuaternion(_aq).y, Zy=v.set(0,0,1).applyQuaternion(_aq).y;
+    const th=Math.acos(clamp(-Math.sin(p[k+'A'])/(Math.hypot(Zy,Yy)||1),-1,1))-Math.atan2(Yy,Zy); J.ankle.rotation.set(th,0,0); J.ankle.updateMatrixWorld(true);
+    for(const q of [[0,-.094,-.05],[0,-.09,.12]]){ v.set(q[0],q[1],q[2]); J.ankle.localToWorld(v); minY=Math.min(minY,v.y); } }
+  B.root.position.y=-minY+p.jump;
 }
-function mixPose(a,b,t){ const o={}; for(const k in a) o[k]=lerp(a[k],b[k],t); return o; }
 
 class SkeletonScene extends Stage{
   constructor(){
-    super({fov:30,fit:{c:V3(0,.94,0),w:1.0,h:2.02},dir:V3(.32,.1,1),ctl:{minPolarAngle:.35,maxPolarAngle:2.1}});
-    this.FIT_STAND=this.fit; this.FIT_BAD={c:V3(-.05,1.12,0),w:1.3,h:2.45};
+    super({fov:30,fit:{c:V3(0,.9,0),w:1.0,h:1.98},dir:V3(.32,.1,1),ctl:{minPolarAngle:.35,maxPolarAngle:2.1},shadow:{size:1.7,target:V3(0,1.1,0)}});
+    this.FIT_STAND=this.fit; this.FIT_BAD={c:V3(-.05,1.3,0),w:1.7,h:2.9}; this.spd=1;
     this.addFloor(0,.8);
     this.B=buildBody(this.scene,{muscles:true});
-    this.pose=mixPose(POSES.stand,POSES.stand,0); applyPose(this.B,this.pose);
+    this.pose={...STAND}; applyPose(this.B,this.pose);
     this.mode='explore'; this.sel=null; this.hov=null; this.anim=null; this.opt={labels:true,muscles:false,organs:false};
     // 라켓 + 셔틀콕
     const rk=new THREE.Group(); const blue=new THREE.MeshStandardMaterial({color:'#2563d8',roughness:.4}), grey=new THREE.MeshStandardMaterial({color:'#9aa3ad',metalness:.6,roughness:.3});
@@ -836,10 +924,13 @@ class SkeletonScene extends Stage{
     const str=new THREE.Mesh(new THREE.CircleGeometry(.098,32),new THREE.MeshBasicMaterial({map:TEX.strings,transparent:true,side:THREE.DoubleSide,depthWrite:false})); str.position.y=-.44; str.scale.set(.82,1.08,1); rk.add(str);
     rk.position.set(0,-.07,.012); rk.rotation.set(.0,0,0); this.B.J.R.wrist.add(rk); rk.visible=false; this.racket=rk; this.racketHead=head;
     this.shuttle=makeShuttle(); this.scene.add(this.shuttle); this.shuttle.visible=false;
+    this.ring=new THREE.Mesh(new THREE.TorusGeometry(.07,.008,8,36),new THREE.MeshBasicMaterial({color:'#ffd23f',transparent:true,opacity:0,depthWrite:false})); this.ring.visible=false; this.scene.add(this.ring);
+    applyPose(this.B,samplePose(BAD,T_HIT)); this.scene.updateMatrixWorld(true); this.hitPos=head.getWorldPosition(V3()); applyPose(this.B,this.pose);
+    this.castAll();
     // 이름표
     const B=this.B, wp=(o,x,y,z)=>()=>o.localToWorld(V3(x,y,z));
     this.partLabels=[
-      this.addLabel({html:'머리뼈',cls:'bone',pos:wp(B.skull,-.06,.13,0),dx:-95,dy:-20}),
+      this.addLabel({html:'머리뼈',cls:'bone',pos:wp(B.skull,-.06,.08,0),dx:-95,dy:-20}),
       this.addLabel({html:'목뼈',cls:'bone',pos:wp(B.T,0,1.54,-.03),dx:-110,dy:0}),
       this.addLabel({html:'갈비뼈',cls:'bone',pos:wp(B.T,.12,1.34,.06),dx:115,dy:-10}),
       this.addLabel({html:'척추뼈',cls:'bone',pos:wp(B.T,0,1.1,-.02),dx:-120,dy:10}),
@@ -878,25 +969,23 @@ class SkeletonScene extends Stage{
   }
   flash(part){ const ms=this.B.mats[part]||[]; ms.forEach(m=>{ m.emissive.set('#ff2020'); m.emissiveIntensity=.4; }); setTimeout(()=>ms.forEach(m=>{ m.emissiveIntensity=0; m.emissive.set('#000'); }),500); }
   flashMuscle(M){ M.hl=.6; setTimeout(()=>M.hl=0,700); }
-  play(name){ if(name==='bad'){ this.anim={t:0}; this.racket.visible=true; this.shuttle.visible=true; if(!this.opt.muscles){ this.setOpt('muscles',true); syncToggle('muscles',true); } if(this.fit!==this.FIT_BAD){ if(this._w) this.tweenFit(this.FIT_BAD); else this.fit=this.FIT_BAD; } this.setHud('<span class="chip big">🏸 근육이 줄어들 때 빨갛게 빛나요!</span>'); }
-    else { this.anim={t:0,to:'stand',from:{...this.pose},once:true}; this.racket.visible=false; this.shuttle.visible=false; if(this.fit!==this.FIT_STAND){ if(this._w) this.tweenFit(this.FIT_STAND); else this.fit=this.FIT_STAND; } } }
+  play(name){ if(name==='bad'){ this.anim={t:0,lastT:0}; this.racket.visible=true; this.shuttle.visible=true; if(!this.opt.muscles){ this.setOpt('muscles',true); syncToggle('muscles',true); } if(this.fit!==this.FIT_BAD){ if(this._w) this.tweenFit(this.FIT_BAD); else this.fit=this.FIT_BAD; } this.setHud('<span class="chip big">🏸 근육이 줄어들 때 빨갛게 빛나요!</span>'); }
+    else { this.anim={t:0,to:'stand',from:{...this.pose},once:true}; this.racket.visible=false; this.shuttle.visible=false; this.ring.visible=false; if(this.fit!==this.FIT_STAND){ if(this._w) this.tweenFit(this.FIT_STAND); else this.fit=this.FIT_STAND; } } }
   update(dt,T){ const B=this.B;
-    if(this.anim){ const a=this.anim; a.t+=dt;
-      if(a.once){ const k=clamp(a.t/.7,0,1); this.pose=mixPose(a.from,POSES.stand,ease(k)); if(k>=1) this.anim=null; }
-      else { const tt=a.t%BAD_KF[BAD_KF.length-1][0]; let i=0; while(i<BAD_KF.length-2&&tt>BAD_KF[i+1][0]) i++;
-        const [t0,p0]=BAD_KF[i],[t1,p1]=BAD_KF[i+1]; const k=clamp((tt-t0)/(t1-t0),0,1); this.pose=mixPose(POSES[p0],POSES[p1],ease(k));
-        this.updateShuttle(tt,dt);
-        if(a.lastT!=null && a.lastT<1.6 && tt>=1.6) SFX.hit(); if(a.lastT!=null && a.lastT<1.45 && tt>=1.45) SFX.swish(); a.lastT=tt; }
+    if(this.anim){ const a=this.anim;
+      if(a.once){ a.t+=dt; const k=clamp(a.t/.7,0,1); this.pose=mixPose(a.from,STAND,ease(k)); if(k>=1) this.anim=null; }
+      else { a.t+=dt*this.spd; const tt=a.t%BAD_DUR; this.pose=samplePose(BAD,tt); this.updateShuttle(tt);
+        if(a.lastT<1.14&&tt>=1.14) SFX.swish(); if(a.lastT<T_HIT&&tt>=T_HIT){ SFX.hit(); this.toast('🏸 팡! 팔 바깥쪽 근육이 줄어들며 팔이 쭉 펴졌어요',1500); } a.lastT=tt; }
       applyPose(B,this.pose); }
     const beat=1+.08*Math.max(0,Math.sin(T*7.5))**8; B.organs.heart.scale.setScalar(beat);
     B.organs.lungs.forEach(l=>{ const b=1+.03*Math.sin(T*1.6); l.scale.set(.06*.95*b,.06*1.75*b,.06*1.05*b); });
     if(this.sel||this.hov){ for(const [p,ms] of Object.entries(B.mats)){ if(p===this.sel){ ms.forEach(m=>m.emissiveIntensity=.22+.12*Math.sin(T*6)); } else if(p===this.hov&&this.mode!=='quiz'){ ms.forEach(m=>{ m.emissive.set('#ffb000'); m.emissiveIntensity=.12; }); } else if(this.mode!=='quiz'){ ms.forEach(m=>{ if(m.emissiveIntensity>0&&p!==this.sel){ m.emissiveIntensity=0; } }); } } }
     this.scene.updateMatrixWorld(); if(this.opt.muscles) B.muscles.forEach(m=>m.update(dt));
   }
-  updateShuttle(tt,dt){ const s=this.shuttle; const head=this.racketHead.getWorldPosition(V3());
-    if(tt<1.6){ const k=clamp((tt-.6)/1.0,0,1); const start=V3(-.25,2.55,.25); const hp=this.hitPos||V3(-.35,2.0,.15); s.position.lerpVectors(start,hp,k); s.visible=tt>.6; s.rotation.set(Math.PI,0,0); this.hitPos=this.hitPos||null; }
-    else { if(!this.hitPos||this._fl===undefined){} const k=tt-1.6; s.visible=k<1.0; const p0=this.hitPos||head; s.position.set(p0.x+k*.6,p0.y+k*1.2-k*k*.4,p0.z-k*2.6); s.rotation.set(-.4,0,0); }
-    if(tt>=1.58&&tt<1.62&&!this._cap){ this.hitPos=head.clone(); this._cap=true; } if(tt<1.0) this._cap=false; }
+  updateShuttle(tt){ const s=this.shuttle, C=this.hitPos, v=V3(), Y=V3(0,1,0);
+    if(tt<T_HIT){ const k=T_HIT-tt; s.visible=k<1.0; s.position.set(C.x+.1*k,C.y+1.25*k,C.z+.02+.55*k); s.quaternion.setFromUnitVectors(Y,v.set(.1,1.25,.55).normalize()); this.ring.visible=false; }
+    else { const k=tt-T_HIT; s.visible=k<.75; s.position.set(C.x+.3*k,C.y-1.3*k-1.3*k*k,C.z+4.4*k); s.quaternion.setFromUnitVectors(Y,v.set(-.3,1.3+2.6*k,-4.4).normalize());
+      const r=this.ring; r.visible=k<.28; if(r.visible){ r.position.copy(C); r.lookAt(this.camera.position); r.scale.setScalar(1+k*14); r.material.opacity=.9*(1-k/.28); } } }
 }
 function makeShuttle(){ const g=new THREE.Group(); g.add(sph(.014,new THREE.MeshStandardMaterial({color:'#fff8ee',roughness:.4}),0,0,0)); const c=new THREE.Mesh(new THREE.ConeGeometry(.034,.07,14,1,true),new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.6,side:THREE.DoubleSide,transparent:true,opacity:.92})); c.position.y=.045; c.rotation.x=Math.PI; g.add(c); return g; }
 
@@ -905,7 +994,7 @@ function makeShuttle(){ const g=new THREE.Group(); g.add(sph(.014,new THREE.Mesh
 ================================================================== */
 class ArmScene extends Stage{
   constructor(){
-    super({fov:32,fit:{c:V3(.3,-.02,0),w:.86,h:.62},dir:V3(.12,.08,1),ctl:{minAzimuthAngle:-1.1,maxAzimuthAngle:1.1,minPolarAngle:.6,maxPolarAngle:2.3}});
+    super({fov:32,fit:{c:V3(.3,-.02,0),w:.86,h:.62},dir:V3(.12,.08,1),ctl:{minAzimuthAngle:-1.1,maxAzimuthAngle:1.1,minPolarAngle:.6,maxPolarAngle:2.3},shadow:{size:.75,target:V3(.3,0,0)}});
     const bm=boneMat(); this.bm=bm; this.theta=.17; this.target=.17; this.speed=2.6; this.seq=null;
     const g=new THREE.Group(); this.scene.add(g);
     // 어깨 주변(어깨뼈·빗장뼈) 일부
@@ -951,6 +1040,7 @@ class ArmScene extends Stage{
       bi:this.addLabel({html:'팔 안쪽 근육',cls:'in',pos:()=>this.bi.mid(),dx:-40,dy:-95}),
       tri:this.addLabel({html:'팔 바깥쪽 근육',cls:'out',pos:()=>this.tri.mid(),dx:-120,dy:60}),
     };
+    this.castAll();
     this.mode='book'; this.prevTheta=this.theta; this.dirState={in:0,out:0,bone:0}; this.lastMove=0;
     this.dragStart=e=>{ if(this.seq) return false; const h=this.pick(e,[...this.forePick,...(this.skinParts[1].visible?[this.skinParts[1],this.skinParts[2]]:[])]); if(h&&this.mode!=='touch'){ this.canvas.style.cursor='grabbing'; return true; } return false; };
     this.dragMove=e=>{ const p=this.planePoint(e,new THREE.Plane(V3(0,0,1),0)); if(!p) return; const el=this.elbow.getWorldPosition(V3()); const base=this.upper.rotation.z-Math.PI/2; let a=Math.atan2(p.y-el.y,p.x-el.x)-base; while(a>Math.PI) a-=2*Math.PI; while(a<-Math.PI) a+=2*Math.PI; if(a<-.6) a=a<-2.2?2.45:0; this.target=clamp(a,0,2.45); this.speed=9; };
@@ -1009,7 +1099,7 @@ const boneTxt=(d,k)=>k==='arm'?(d>0?'⤴ 올라가요':d<0?'⤵ 내려가요':'�
 ================================================================== */
 class LegScene extends Stage{
   constructor(){
-    super({fov:30,fit:{c:V3(-.12,.92,0),w:1.35,h:1.95},dir:V3(.08,.12,1),ctl:{minAzimuthAngle:-1.2,maxAzimuthAngle:1.2,minPolarAngle:.5,maxPolarAngle:2.0}});
+    super({fov:30,fit:{c:V3(-.12,.9,0),w:1.35,h:1.95},dir:V3(.08,.12,1),ctl:{minAzimuthAngle:-1.2,maxAzimuthAngle:1.2,minPolarAngle:.5,maxPolarAngle:2.0},shadow:{size:1.5,target:V3(-.1,.9,0)}});
     this.addFloor(0,.9).position.x=-.2;
     this.B=buildBody(this.scene,{muscles:true}); this.B.root.rotation.y=Math.PI/2;
     this.B.muscles.forEach(m=>{ m.mesh.visible=/넓적다리|종아리|정강이|엉덩이/.test(m.name); if(!/넓적다리/.test(m.name)) m.mat.color.set('#e6c2c2'); });
@@ -1031,6 +1121,7 @@ class LegScene extends Stage{
       bone:this.addLabel({html:'다리뼈',cls:'bone',pos:wp(J.knee,0,-.2,0),dx:110,dy:40}),
     };
     this.setHud('<span class="chip">🪑 앉기·일어서기 버튼을 눌러 보세요 · 드래그하면 돌아가요</span>');
+    this.B.root.position.y=-.037; this.castAll();
     this.apply(0,0);
   }
   apply(s,dt){ const B=this.B; const a=s*Math.PI/2; const rs=.32*Math.sin(Math.PI*s); const lean=.42*Math.sin(Math.PI*s)+.06*s;
@@ -1284,6 +1375,7 @@ $('#fsBtn').onclick=()=>{ try{ if(!document.fullscreenElement) document.document
 $$('#skMode button').forEach(b=>b.onclick=()=>{ $$('#skMode button').forEach(x=>x.classList.toggle('on',x===b)); getScene('skeleton').setMode(b.dataset.m); SFX.tick(); });
 $$('.tg[data-t]').forEach(b=>b.onclick=()=>{ const v=!b.classList.contains('on'); b.classList.toggle('on',v); getScene('skeleton').setOpt(b.dataset.t,v); SFX.tick(); });
 $('#skBad').onclick=()=>{ const s=getScene('skeleton'); s._userBad=true; s.play('bad'); };
+$('#skSlow').onclick=e=>{ const b=e.currentTarget, v=!b.classList.contains('on'); b.classList.toggle('on',v); getScene('skeleton').spd=v?.3:1; SFX.tick(); };
 $('#skStand').onclick=()=>{ const s=getScene('skeleton'); s._userBad=false; s.play('stand'); s.setHud('<span class="chip">👆 뼈를 눌러 보세요 · 드래그하면 빙글 돌아가요</span>'); };
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-arm]'); if(!b||b.tagName==='INPUT') return; const sc=getScene('arm'); const a=b.dataset.arm;
   if(a==='bend') sc.bend(); if(a==='straight') sc.straight(); if(a==='swing') sc.swing();
@@ -1319,7 +1411,7 @@ $$('.faces').forEach(f=>$$('button',f).forEach(b=>b.onclick=()=>{ $$('button',f)
 try{ initTextures(); sharedMats(); }catch(err){ console.error(err); }
 const startId=(location.hash||'').slice(1);
 showPage($(`.page[data-id="${startId}"]`)?startId:'book-1',false);
-window.__S=SCENES; window.__P={applyPose,POSES,mixPose};
+window.__S=SCENES; window.__P={applyPose,samplePose,BAD,STAND};
 </script>
 <script>
 setTimeout(function(){ if(!window.__S){ document.querySelectorAll('.stage').forEach(function(s){ s.innerHTML='<div class="boot" style="padding:20px;text-align:center">3D 화면을 불러오지 못했어요.<br>인터넷 연결을 확인하고 새로고침해 주세요.</div>'; }); } },9000);
