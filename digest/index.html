@@ -65,6 +65,7 @@ button{font-family:inherit}
 .stage-tools button.on{background:#2a2433;color:#fff;border-color:#2a2433}
 .toast{position:absolute;left:50%;bottom:24px;transform:translate(-50%,20px);background:#2a2433;color:#fff;padding:12px 20px;border-radius:16px;font-weight:700;font-size:17px;opacity:0;transition:.35s;pointer-events:none;z-index:4;text-align:center;max-width:90%}
 .toast.show{opacity:1;transform:translate(-50%,0)}
+.mouth2d{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none}
 .boot{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-weight:700;font-size:16px;text-align:center;padding:20px}
 /* 소화 과정 막대 */
 .stick{position:absolute;right:20px;top:60px;bottom:64px;width:54px;z-index:3;touch-action:none;cursor:grab}
@@ -590,8 +591,8 @@ class DigestScene extends Stage{
     this.allMats=Object.values(this.mats).flat();
 
     /* 음식 조각, 거품, 반짝이 */
-    this.N=48; const pg=new THREE.IcosahedronGeometry(1,1);
-    this.pieces=new THREE.InstancedMesh(pg,new THREE.MeshStandardMaterial({roughness:.5,flatShading:true,transparent:true,depthTest:false}),this.N); this.pieces.renderOrder=15; this.pieces.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.pieces.frustumCulled=false; this.scene.add(this.pieces);
+    this.N=48; const pg=new THREE.IcosahedronGeometry(1,2);
+    this.pieces=new THREE.InstancedMesh(pg,new THREE.MeshStandardMaterial({roughness:.45,transparent:true,depthTest:false}),this.N); this.pieces.renderOrder=15; this.pieces.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.pieces.frustumCulled=false; this.scene.add(this.pieces);
     for(let i=0;i<this.N;i++) this.pieces.setColorAt(i,new THREE.Color('#fff'));
     this.seeds=[...Array(this.N)].map((_,i)=>({a:hash(i)*Math.PI*2,r:.35+.65*hash(i+50),l:hash(i+100),sz:.75+.5*hash(i+150),c:Math.floor(hash(i+200)*6),y:hash(i+250)-.5}));
     this.NB=40; this.bub=new THREE.InstancedMesh(new THREE.SphereGeometry(1,12,8),new THREE.MeshPhysicalMaterial({color:'#ffffff',roughness:.1,transparent:true,opacity:.65,depthWrite:false,depthTest:false}),this.NB); this.bub.renderOrder=14; this.bub.frustumCulled=false; this.scene.add(this.bub);
@@ -619,6 +620,7 @@ class DigestScene extends Stage{
     this.addTool('↺ 처음 시점',()=>{ this.userT=0; if(this.mode==='explore'||this.mode==='label'||!this.follow) this.tweenFit(this.FIT_EX); });
     this.click=e=>this.onClick(e);
     this.hover=e=>{ if(this.mode!=='explore') return; const h=this.pick(e,this.picks); this.canvas.style.cursor=h?'pointer':'grab'; };
+    this.mv=new MouthView(this.root,this.lab);
     this.buildFood();
     this.setMode('explore');
   }
@@ -633,7 +635,7 @@ class DigestScene extends Stage{
     this.cols=f.cols.map(c=>new THREE.Color(c)); }
   setFood(k){ this.food=k; this.buildFood(); this.reset(); }
   /* --- 모드 --- */
-  setMode(m){ this.mode=m; const ex=m==='explore'||m==='label';
+  setMode(m){ this.mode=m; const ex=m==='explore'||m==='label'; this.mv.a=0; this.mv.render(this,0);
     this.sel=null; this.highlight(null);
     for(const k in this.L){ this.L[k].show=(m==='explore'&&this.opt.labels); }
     this.curL.show=false; this.sayL.show=false;
@@ -641,6 +643,7 @@ class DigestScene extends Stage{
     this.applyLook();
     if(ex){ this.tweenFit(this.FIT_EX); this.pieces.visible=this.bub.visible=this.spk.visible=false; this.poop.visible=false; this.foodG.visible=false; this.setJaw(0); }
     else { this.pieces.visible=this.bub.visible=this.spk.visible=true; this.reset(); }
+    this.mouth.visible=ex;
     this.rightPad=m==='scrub'?80:0;
     if(m==='explore') this.setHud('<span class="chip">👆 소화기관을 눌러 보세요 · 드래그하면 빙글 돌아가요</span>');
     else if(m==='label') this.setHud('<span class="chip">🏷️ 이름 카드를 알맞은 빈칸에 놓아요</span>');
@@ -650,7 +653,7 @@ class DigestScene extends Stage{
   }
   applyLook(){ const sim=this.mode==='sim'||this.mode==='scrub'; const see=sim||this.opt.xray;
     this.body.visible=this.opt.body||sim; setOpacity(this.bodyM,sim?.42:.55);
-    for(const [k,ms] of Object.entries(this.mats)){ let op=1; if(see) op=k==='간'?.3:(k==='입'?.9:.68); setOpacity(ms,op); }
+    for(const [k,ms] of Object.entries(this.mats)){ let op=1; if(see) op=k==='간'?.3:(k==='입'?1:.68); setOpacity(ms,op); }
   }
   setOpt(k,v){ this.opt[k]=v; if(k==='labels') for(const n in this.L) this.L[n].show=v&&this.mode==='explore'; this.applyLook(); }
   highlight(name){ for(const [k,ms] of Object.entries(this.mats)) ms.forEach(m=>{ m.emissive.set(k===name?'#ffb000':'#ff6a3d'); m.emissiveIntensity=k===name?.35:0; }); for(const k in this.L) this.L[k].el.classList.toggle('sel',k===name); }
@@ -673,6 +676,7 @@ class DigestScene extends Stage{
     const {i:si,q}=stageOf(this.p);
     if(si!==this.lastStage){ if(this.started) this.stageEnter(si); this.lastStage=si; }
     this.simulate(si,q,dt,moving);
+    this.mv.a+=((si===0?1:0)-this.mv.a)*Math.min(1,dt*6); this.mv.render(this,this.time);
     this.onState&&this.onState(this.state(si,q));
   }
   stageEnter(i){ const k=STAGES[i].k; if(this.started){ if(i===1) SFX.gulp(); if(i===2) SFX.blub(); if(i===5) SFX.plop(); }
@@ -700,7 +704,7 @@ class DigestScene extends Stage{
       const ci=q<Bt?(q>Bt-.012?1:0):q<C?1:q<D?2+Math.floor(cq+.5):9; if(ci!==this._chomp){ if(ci>this._chomp&&ci>0&&ci<9&&moving) SFX.crunch(); this._chomp=ci; }
     }
     if(this.mode==='sim'){ const hud=si===0&&this.started?phase:''; if(hud!==this._hud){ this._hud=hud; this.setHud(hud?`<span class="chip big">${hud}</span>`:''); } }
-    this.setJaw(jaw,jx);
+    this.setJaw(jaw,jx); this._m={q:this.started&&si===0?q:(si===0?0:1),jaw,nP,cq,A,Bt,C,D};
     const lowY=-Math.sin(jaw*.42)*.056;   // 아래 어금니 윗면 높이(입 기준)
     this.foodG.visible=si===0&&q<C;
     if(this.foodG.visible){ const k=ease(clamp(q/A,0,1)), out=ease(clamp((q-Bt)/(C-Bt),0,1)); this.foodG.position.set(0,MOUTH.y-.002+.008*Math.sin(this.time*2)*(1-k)-.03*out,lerp(.26,MOUTH.z+.056,k)+.2*out); this.foodG.scale.setScalar(.82*(1-out)); this.foodG.rotation.y=this.time*.6*(1-k); this.biteM.visible=q>Bt-.012; }
@@ -769,6 +773,86 @@ class DigestScene extends Stage{
       const asp=Math.max(1,1.15/this.camera.aspect); const want=c.clone().addScaledVector(CAM.dir.clone().normalize(),CAM.d*asp);
       const k=1-Math.exp(-dt*3.4); this.camera.position.lerp(want,k); this.controls.target.lerp(c,k);
     }
+  }
+}
+
+/* ==================================================================
+   입 단면 그림 (2D) — 음식물이 입에 있는 동안 크게 보여 준다
+================================================================== */
+class MouthView{
+  constructor(root,before){ this.cv=document.createElement('canvas'); this.cv.className='mouth2d'; root.insertBefore(this.cv,before); this.g=this.cv.getContext('2d'); this.a=0; }
+  blob(g,x,y,r,col,seed,sy=1){ g.save(); g.translate(x,y); g.scale(1,sy); g.beginPath(); const n=9; const P=[]; for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, rr=r*(.84+.3*hash(seed*7+i)); P.push([Math.cos(a)*rr,Math.sin(a)*rr]); }
+    g.moveTo((P[0][0]+P[n-1][0])/2,(P[0][1]+P[n-1][1])/2); for(let i=0;i<n;i++){ const q=P[(i+1)%n]; g.quadraticCurveTo(P[i][0],P[i][1],(P[i][0]+q[0])/2,(P[i][1]+q[1])/2); } g.closePath();
+    const gr=g.createRadialGradient(-r*.3,-r*.35,r*.1,0,0,r*1.15); gr.addColorStop(0,'#ffffff'); gr.addColorStop(.25,col); gr.addColorStop(1,col); g.fillStyle=gr; g.fill(); g.lineWidth=1.6; g.strokeStyle='rgba(60,20,10,.35)'; g.stroke(); g.restore(); }
+  tag(g,txt,x,y,tx,ty){ g.strokeStyle='#c2410c'; g.lineWidth=2.5; g.beginPath(); g.moveTo(x,y); g.lineTo(tx,ty); g.stroke(); g.fillStyle='#c2410c'; g.beginPath(); g.arc(tx,ty,6,0,7); g.fill();
+    g.font='900 22px "Noto Sans KR",sans-serif'; const w=g.measureText(txt).width+30; g.fillStyle='#fff'; g.strokeStyle='#e98a5a'; g.lineWidth=3; g.beginPath(); g.roundRect(x-w/2,y-20,w,40,20); g.fill(); g.stroke(); g.fillStyle='#9a3412'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,x,y+1); }
+  render(sc,time){ const cv=this.cv, a=this.a; if(a<.01){ if(cv.style.display!=='none') cv.style.display='none'; return; } cv.style.display='block'; cv.style.opacity=a.toFixed(3);
+    const W=sc._w||0,H=sc._h||0, m=sc._m; if(!W||!m) return; const r=Math.min(window.devicePixelRatio||1,2); if(cv.width!==Math.round(W*r)||cv.height!==Math.round(H*r)){ cv.width=Math.round(W*r); cv.height=Math.round(H*r); }
+    const g=this.g; g.setTransform(r,0,0,r,0,0); const bg=g.createRadialGradient(W*.4,H*.4,10,W*.5,H*.5,Math.max(W,H)*.75); bg.addColorStop(0,'#ffffff'); bg.addColorStop(1,'#efe6da'); g.fillStyle=bg; g.fillRect(0,0,W,H);
+    const S=Math.min(W/1000,H/800)*1.3; g.translate(W*.5-455*S,H*.5-400*S); g.scale(S,S); g.lineJoin='round'; g.lineCap='round';
+    const {q,jaw,nP,cq,A,Bt,C,D}=m; const th=jaw*.3, hx0=640,hy0=300; const rot=(x,y)=>{ const dx=x-hx0,dy=y-hy0,c=Math.cos(-th),s=Math.sin(-th); return [hx0+dx*c-dy*s,hy0+dx*s+dy*c]; };
+    const SK='#f7d2ab', SKL='#dba877', LIP='#e07585', BONE='#f6ecd6', BL='#d3c3a1', TW='#ffffff', TL='#c9bfa8';
+    const kSw=q>=D?(q-D)/(1-D):0, ga=ease(clamp(kSw/.5,0,1)), bk=ease(clamp((kSw-.5)/.5,0,1)), pr=ss(C,D,q);
+    // ── 머리(고정) ──
+    g.beginPath(); g.moveTo(330,-600); g.lineTo(322,40); g.bezierCurveTo(318,90,300,110,268,150); g.bezierCurveTo(250,170,215,190,212,208); g.bezierCurveTo(210,228,240,244,278,250); g.bezierCurveTo(262,262,244,284,246,306); g.bezierCurveTo(247,330,258,342,272,348);
+    g.lineTo(620,348); g.lineTo(620,470); g.lineTo(430,592); g.lineTo(468,1500); g.lineTo(2400,1500); g.lineTo(2400,-600); g.closePath(); g.fillStyle=SK; g.fill(); g.lineWidth=4; g.strokeStyle=SKL; g.stroke();
+    g.beginPath(); g.moveTo(246,306); g.bezierCurveTo(234,322,244,344,272,348); g.bezierCurveTo(262,336,262,318,258,304); g.closePath(); g.fillStyle=LIP; g.fill();
+    // 코안
+    g.beginPath(); g.moveTo(292,262); g.bezierCurveTo(340,196,560,210,655,296); g.lineTo(580,292); g.lineTo(300,292); g.closePath(); g.fillStyle='#fbe3dc'; g.fill(); g.lineWidth=3; g.strokeStyle='#e9b9ae'; g.stroke();
+    // 입안(어두운 부분) + 목구멍
+    const L=rot(272,352); g.beginPath(); g.moveTo(278,322); g.lineTo(640,322); g.lineTo(742,300); g.lineTo(748,500); g.lineTo(620,490); g.lineTo(L[0],L[1]); g.lineTo(272,348); g.closePath(); const cg=g.createLinearGradient(270,0,740,0); cg.addColorStop(0,'#a03347'); cg.addColorStop(.6,'#6b1a29'); cg.addColorStop(1,'#4a0f1b'); g.fillStyle=cg; g.fill();
+    // 숨길(기도)
+    g.beginPath(); g.moveTo(590,545); g.lineTo(660,515); g.lineTo(684,1500); g.lineTo(612,1500); g.closePath(); g.fillStyle='#e9f1f6'; g.fill(); g.lineWidth=4; g.strokeStyle='#a9bfd0'; g.stroke(); for(let y=580;y<1000;y+=38){ g.beginPath(); g.moveTo(597+(y-545)*.023,y); g.lineTo(660+(y-515)*.024,y-12); g.stroke(); }
+    // 식도
+    g.beginPath(); g.moveTo(650,330); g.lineTo(742,300); g.lineTo(748,520); g.lineTo(770,1500); g.lineTo(698,1500); g.lineTo(674,524); g.lineTo(646,484); g.closePath(); g.fillStyle='#93303f'; g.fill();
+    g.lineWidth=10; g.strokeStyle='#e08a97'; g.beginPath(); g.moveTo(742,296); g.lineTo(748,520); g.lineTo(770,1500); g.stroke(); g.beginPath(); g.moveTo(674,524); g.lineTo(698,1500); g.stroke();
+    // 후두덮개(삼킬 때 숨길을 막아요)
+    g.save(); g.translate(648,500); g.rotate(lerp(-1.25,.3,bk)); g.beginPath(); g.moveTo(-6,0); g.quadraticCurveTo(30,-16,66,-4); g.quadraticCurveTo(34,12,-6,6); g.closePath(); g.fillStyle='#f0a9b2'; g.fill(); g.lineWidth=3; g.strokeStyle='#c96f7c'; g.stroke(); g.restore();
+    // 입천장(뼈) · 물렁입천장 · 목젖
+    g.beginPath(); g.moveTo(276,300); g.lineTo(560,296); g.quadraticCurveTo(578,297,580,310); g.lineTo(580,324); g.lineTo(280,324); g.closePath(); g.fillStyle=BONE; g.fill(); g.lineWidth=3; g.strokeStyle=BL; g.stroke();
+    g.beginPath(); g.moveTo(575,298); g.bezierCurveTo(622,298,656,330,662,372); g.bezierCurveTo(664,402,646,406,643,388); g.bezierCurveTo(640,360,610,332,575,326); g.closePath(); g.fillStyle='#ea8d9b'; g.fill(); g.strokeStyle='#c96f7c'; g.stroke();
+    // 윗니
+    g.fillStyle='#ee8fa0'; g.beginPath(); g.roundRect(268,316,290,20,10); g.fill();
+    const molar=(x,y0,y1,w)=>{ const up=y1>y0, rr=9; g.beginPath(); g.moveTo(x-w/2,y0); g.lineTo(x-w/2,y1-(up?rr:-rr)); g.quadraticCurveTo(x-w/2,y1,x-w/2+rr,y1); g.quadraticCurveTo(x-w/4,y1+(up?-5:5),x,y1+(up?-1:1)); g.quadraticCurveTo(x+w/4,y1+(up?-5:5),x+w/2-rr,y1); g.quadraticCurveTo(x+w/2,y1,x+w/2,y1-(up?rr:-rr)); g.lineTo(x+w/2,y0); g.closePath(); const tg=g.createLinearGradient(0,y0,0,y1); tg.addColorStop(0,'#ece2cc'); tg.addColorStop(.5,TW); tg.addColorStop(1,TW); g.fillStyle=tg; g.fill(); g.lineWidth=2.5; g.strokeStyle=TL; g.stroke(); };
+    for(const x of [338,378,424,472,520]) molar(x,330,366,x>400?44:36);
+    g.beginPath(); g.moveTo(268,320); g.bezierCurveTo(262,346,268,372,284,386); g.bezierCurveTo(294,366,296,340,292,320); g.closePath(); g.fillStyle=TW; g.fill(); g.lineWidth=2.5; g.strokeStyle=TL; g.stroke();
+    // ── 아래턱(움직임) ──
+    g.save(); g.translate(hx0,hy0); g.rotate(-th); g.translate(-hx0,-hy0);
+    g.beginPath(); g.moveTo(272,352); g.bezierCurveTo(250,356,240,378,250,398); g.bezierCurveTo(262,420,276,428,274,446); g.bezierCurveTo(262,470,258,505,278,535); g.bezierCurveTo(300,565,360,570,430,592); g.lineTo(620,470); g.lineTo(620,352); g.closePath(); g.fillStyle=SK; g.fill();
+    g.beginPath(); g.moveTo(272,352); g.bezierCurveTo(250,356,240,378,250,398); g.bezierCurveTo(262,420,276,428,274,446); g.bezierCurveTo(262,470,258,505,278,535); g.bezierCurveTo(300,565,360,570,430,592); g.lineWidth=4; g.strokeStyle=SKL; g.stroke();
+    g.beginPath(); g.moveTo(285,352); g.lineTo(624,352); g.lineTo(624,462); g.lineTo(300,440); g.closePath(); g.fillStyle='#8c2a3b'; g.fill();
+    g.beginPath(); g.moveTo(272,352); g.bezierCurveTo(250,356,240,378,250,398); g.bezierCurveTo(264,394,274,374,284,356); g.closePath(); g.fillStyle=LIP; g.fill();
+    g.beginPath(); g.moveTo(292,404); g.lineTo(300,500); g.quadraticCurveTo(312,540,366,534); g.lineTo(586,500); g.lineTo(612,470); g.lineTo(612,440); g.lineTo(330,436); g.lineTo(324,404); g.closePath(); g.fillStyle=BONE; g.fill(); g.lineWidth=3; g.strokeStyle=BL; g.stroke();
+    g.fillStyle='#ee8fa0'; g.beginPath(); g.roundRect(288,398,272,20,10); g.fill();
+    for(const x of [344,384,430,478,526]) molar(x,404,368,x>400?44:36);
+    g.beginPath(); g.moveTo(292,412); g.bezierCurveTo(288,388,292,368,302,356); g.bezierCurveTo(312,372,316,392,314,412); g.closePath(); g.fillStyle=TW; g.fill(); g.lineWidth=2.5; g.strokeStyle=TL; g.stroke();
+    // 혀
+    const tr=q>=Bt&&q<C?Math.sin((q-Bt)/(C-Bt)*Math.PI):0, chew=q>=C&&q<D?1:0, wob=chew?Math.sin(cq*Math.PI*2)*4:0;
+    const tx=312, ty=398-22*tr, hx=lerp(450-30*chew,600,bk), hy=lerp(q===0?358:372+10*chew+wob,338,Math.max(ga*.6,bk));
+    g.beginPath(); g.moveTo(614,452); g.lineTo(332,438); g.bezierCurveTo(300,434,296,ty+18,tx,ty); g.bezierCurveTo(tx+44,ty-24,hx-90,hy,hx,hy); g.bezierCurveTo(hx+70,hy,642,hy+40,648,432); g.lineTo(642,456); g.closePath();
+    const tgd=g.createLinearGradient(0,350,0,455); tgd.addColorStop(0,'#f594a4'); tgd.addColorStop(1,'#d9566c'); g.fillStyle=tgd; g.fill(); g.lineWidth=3; g.strokeStyle='#b8445a'; g.stroke();
+    const tongueTip=[tx+40,ty+16];
+    // 음식 조각(아래 어금니 위)
+    const cols=sc.cols.map(c=>'#'+c.getHexString()), gap=200*Math.sin(th);
+    if(q<D){ for(let i=0;i<nP;i++){ const sd=sc.seeds[i]; let x,y,rr,sy=1;
+        if(q<C){ const k=q<Bt?0:ease((q-Bt)/(C-Bt)); rr=32; x=lerp(332,455,k); y=lerp(374,366,k)-rr-14*Math.sin(k*Math.PI); }
+        else { rr=(32/Math.pow(nP,.36)+5)*sd.sz; x=396+sd.r*118+Math.sin(time*5+i)*.8; const room=Math.max(0,gap-rr*1.6); y=366-rr*.8-sd.l*room*.85; sy=clamp((gap+10)/(rr*1.7),.5,1); }
+        this.blob(g,x,y,rr,cols[sd.c%cols.length],i,sy); } }
+    // 침
+    if(pr>0&&q<D){ g.fillStyle='rgba(120,200,255,.75)'; g.strokeStyle='rgba(255,255,255,.9)'; g.lineWidth=1.5; for(let i=0;i<pr*16;i++){ const x=392+hash(i+31)*130, y=362-hash(i+47)*Math.max(8,gap*.9)+Math.sin(time*3+i)*2; g.beginPath(); g.arc(x,y,3+hash(i+5)*4,0,7); g.fill(); g.stroke(); } }
+    g.restore();
+    // 삼키기: 뭉친 음식물이 목구멍 → 식도로
+    if(q>=D){ const P0=[455,352],P1=[640,356],P2=[712,470],P3=[722,720]; const u=bk; const bz=(a,b,c,d)=>{ const v=1-u; return v*v*v*a+3*v*v*u*b+3*v*u*u*c+u*u*u*d; }; const bx=bz(P0[0],P1[0],P2[0],P3[0]), by=bz(P0[1],P1[1],P2[1],P3[1]);
+      for(let i=0;i<nP;i++){ const sd=sc.seeds[i]; const rr=(32/Math.pow(nP,.36)+5)*sd.sz; const sx=396+sd.r*118, sy0=356-rr; const cx=bx+Math.cos(sd.a)*24*sd.r, cy=by+Math.sin(sd.a)*20*sd.r; this.blob(g,lerp(sx,cx,ga),lerp(sy0,cy,ga),rr,cols[sd.c%cols.length],i); }
+      g.fillStyle='rgba(120,200,255,.6)'; for(let i=0;i<10;i++){ g.beginPath(); g.arc(bx+Math.cos(i*2.1)*26,by+Math.sin(i*1.7)*17,4,0,7); g.fill(); } }
+    // 먹기 전 음식
+    if(q<C){ const k=ease(clamp(q/A,0,1)), out=ease(clamp((q-Bt)/(C-Bt),0,1)); const fx=lerp(-170,168,k)-260*out, fy=lerp(372,392,k)+6*Math.sin(time*2)*(1-k)+60*out; const em=FOODS[sc.food].emoji;
+      g.save(); g.globalAlpha=1-out; if(q>Bt-.012){ g.beginPath(); g.rect(fx-200,fy-200,400,400); g.arc(fx+92,fy-4,44,0,Math.PI*2,true); g.clip('evenodd'); }
+      g.font='176px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(em,fx,fy+8); g.restore(); }
+    // 이름표
+    const tt=rot(tongueTip[0]+60,tongueTip[1]+6);
+    this.tag(g,'이',452,246,424,340); this.tag(g,'혀',200,600,tt[0],tt[1]); this.tag(g,'식도',722,236,722,400); this.tag(g,'숨길',560,665,640,650);
+    if(pr>.05&&q<D) this.tag(g,'침',520,585,rot(470,352)[0],rot(470,352)[1]-gap*.25);
   }
 }
 
