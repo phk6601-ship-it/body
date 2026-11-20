@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>혈액은 어떻게 온몸을 돌까? — 순환기관 3D 실험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --book:#6b3fb4; --book-d:#4e2a8c; --book-l:#f1eafc;
+  --lab:#0b8f80; --lab-d:#076b60; --lab-l:#e2f5f1;
+  --ink:#2a2433; --muted:#6c6579; --line:#e7e2ed; --bg:#f6f4f0;
+  --yellow:#ffcf2e; --ok:#18a058; --no:#e5484d; --org:#c2410c;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:'Noto Sans KR',system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button{font-family:inherit}
+.top{display:flex;align-items:center;gap:14px;padding:10px 18px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.unit{display:flex;align-items:center;gap:12px;min-width:0}
+.unit .num{font-family:'Jua',sans-serif;font-size:40px;line-height:1;color:#fff;background:linear-gradient(160deg,#8a5fd0,var(--book));width:50px;height:56px;display:grid;place-items:center;border-radius:14px 14px 14px 4px;flex:none;box-shadow:0 4px 0 var(--book-d)}
+.unit h1{font-family:'Jua',sans-serif;font-weight:400;font-size:27px;margin:0;line-height:1.1;white-space:nowrap}
+.unit small{display:block;color:var(--muted);font-size:13px;font-weight:500;margin-top:3px}
+.toc{display:inline-flex;align-items:center;gap:4px;text-decoration:none;color:var(--book);font-weight:900;font-size:14px;border:2px solid var(--book-l);background:#fff;border-radius:12px;padding:8px 12px;flex:none}
+.tabs{margin-left:auto;display:flex;gap:6px;background:#f2eff6;padding:5px;border-radius:18px}
+.tab{border:0;border-radius:14px;padding:9px 18px;font-weight:900;font-size:17px;cursor:pointer;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;transition:.2s}
+.tab .pg{font-weight:500;font-size:12px;opacity:.85}
+.tab[data-view=book].on{background:var(--book);color:#fff;box-shadow:0 4px 14px rgba(107,63,180,.35)}
+.tab[data-view=lab].on{background:var(--lab);color:#fff;box-shadow:0 4px 14px rgba(11,143,128,.35)}
+.icobtn{border:1px solid var(--line);background:#fff;border-radius:12px;width:42px;height:42px;font-size:19px;cursor:pointer;flex:none}
+.view{display:none}.view.on{display:block}
+.steps{display:flex;gap:8px;padding:12px 18px 0;flex-wrap:wrap;align-items:center}
+.steps .who{font-family:'Jua';font-size:20px;margin-right:6px}
+.view[data-view=book] .who{color:var(--book)}.view[data-view=lab] .who{color:var(--lab)}
+.step{border:2px solid var(--line);background:#fff;border-radius:999px;padding:7px 15px;font-weight:700;font-size:15px;cursor:pointer;color:var(--muted);transition:.15s}
+.view[data-view=book] .step.on{border-color:var(--book);color:#fff;background:var(--book)}
+.view[data-view=lab] .step.on{border-color:var(--lab);color:#fff;background:var(--lab)}
+.page{display:none;grid-template-columns:minmax(0,1fr) 390px;gap:16px;padding:12px 18px 18px;height:calc(100vh - 134px);min-height:600px}
+.page.on{display:grid}
+.stage{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--line);min-height:400px;background:radial-gradient(ellipse at 50% 38%,#ffffff 0%,#f6f1ea 55%,#e9e1d6 100%)}
+.stage-root{position:absolute;inset:0}
+.stage-root canvas{display:block;width:100%!important;height:100%!important;touch-action:none;outline:none}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.labels svg{position:absolute;inset:0;width:100%;height:100%}
+.labels line{stroke:#c2410c;stroke-width:1.6}
+.lbl{position:absolute;transform:translate(-50%,-50%);background:rgba(255,255,255,.96);border:2px solid #e98a5a;color:#9a3412;border-radius:999px;padding:4px 12px;font-weight:900;font-size:15px;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.12);text-align:center;line-height:1.3}
+.lbl small{display:block;font-size:12.5px;font-weight:700;color:#5b4a3f;white-space:normal}
+.lbl.sel{background:#ffcf2e;border-color:#b8860b;color:#4a3500}
+.lbl.cur{border-radius:16px;max-width:280px;white-space:normal;padding:8px 14px;font-size:18px;border-width:3px}
+.lbl.say{border-radius:16px;border-color:#8a5a2b;color:#5a3a1a;font-size:16px;padding:8px 14px}
+.lbl.zone{pointer-events:auto;cursor:pointer;border-style:dashed;border-color:#9c8f84;color:#9c8f84;min-width:84px;background:rgba(255,255,255,.9)}
+.lbl.zone.hot{border-color:var(--lab);background:var(--lab-l);color:var(--lab)}
+.lbl.zone.ok{border-style:solid;border-color:var(--ok);color:#0f6b3b;background:#eafaf0}
+.lbl.zone.bad{animation:shake .4s}
+.lbl.zone.fixed{border-style:solid;border-color:#d6cfc6;color:#8b7f74}
+.ldot{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#e98a5a;border:2px solid #fff}
+.ldot.cur,.ldot.say{display:none!important}
+@keyframes shake{0%,100%{margin-left:0}25%{margin-left:-8px}75%{margin-left:8px}}
+.hud{position:absolute;left:14px;top:12px;right:80px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.chip{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-weight:700;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.chip.big{font-size:17px;padding:8px 16px;background:#2a2433;color:#fff;border:0}
+.stage-tools{position:absolute;right:12px;bottom:12px;display:flex;gap:8px;z-index:3}
+.stage-tools button{border:1px solid var(--line);background:rgba(255,255,255,.95);border-radius:12px;padding:8px 12px;font-weight:700;font-size:13px;cursor:pointer;color:var(--muted)}
+.stage-tools button.on{background:#2a2433;color:#fff;border-color:#2a2433}
+.toast{position:absolute;left:50%;bottom:24px;transform:translate(-50%,20px);background:#2a2433;color:#fff;padding:12px 20px;border-radius:16px;font-weight:700;font-size:17px;opacity:0;transition:.35s;pointer-events:none;z-index:4;text-align:center;max-width:90%}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.mouth2d{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none}
+.boot{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-weight:700;font-size:16px;text-align:center;padding:20px}
+/* 소화 과정 막대 */
+.stick{position:absolute;right:20px;top:60px;bottom:64px;width:54px;z-index:3;touch-action:none;cursor:grab}
+.stick .bar{position:absolute;left:12px;right:12px;top:0;bottom:0;border-radius:10px;background:linear-gradient(90deg,#1e66d6,#3b8cff 45%,#1e66d6);box-shadow:inset 0 0 0 2px rgba(0,0,0,.15),0 4px 12px rgba(30,102,214,.35)}
+.stick .fill{position:absolute;left:12px;right:12px;top:0;border-radius:10px;background:rgba(255,255,255,.35)}
+.stick .grip{position:absolute;left:0;right:0;height:46px;margin-top:-23px;border-radius:14px;background:#fff;border:3px solid #1e66d6;display:grid;place-items:center;font-size:22px;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+.stick .tk{position:absolute;right:62px;transform:translateY(-50%);font-weight:900;font-size:13px;color:#1b4fa8;background:rgba(255,255,255,.9);border-radius:999px;padding:2px 9px;white-space:nowrap;pointer-events:none;transition:.2s}
+.stick .tk.on{background:#1e66d6;color:#fff;transform:translateY(-50%) scale(1.12)}
+.stick .cap{position:absolute;top:-34px;right:-6px;font-weight:900;font-size:12.5px;color:#1b4fa8;white-space:nowrap}
+/* panel */
+.panel{overflow:auto;display:flex;flex-direction:column;gap:12px;padding:0 4px 8px 0;scrollbar-width:thin}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:15px 16px;flex:none}
+.kicker{display:flex;align-items:center;gap:8px;font-family:'Jua';font-size:23px;margin-bottom:8px;line-height:1.2}
+.pgtag{font-family:'Noto Sans KR';font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;color:#fff;flex:none}
+.view[data-view=book] .pgtag{background:var(--book)}.view[data-view=lab] .pgtag{background:var(--lab)}
+.view[data-view=book] .card.intro{border-left:6px solid var(--book)}
+.view[data-view=lab] .card.intro{border-left:6px solid var(--lab)}
+.lead{margin:0;font-size:16px;line-height:1.75}
+.lead b{color:var(--book-d)}
+.view[data-view=lab] .lead b{color:var(--lab-d)}
+.gloss{margin-top:10px;background:#fff7d6;border-radius:12px;padding:8px 12px;font-size:14px;font-weight:500;line-height:1.6}
+.gloss b{color:#c2410c}
+.sub{font-weight:900;font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:6px;line-height:1.45}
+.muted{color:var(--muted);font-size:14px;line-height:1.6}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:0;border-radius:14px;padding:11px 14px;font-weight:900;font-size:16px;cursor:pointer;background:#f1eef5;color:var(--ink);flex:1 1 auto;transition:transform .1s, background .2s}
+.btn:active{transform:scale(.96)}
+.btn.hot{background:var(--yellow);color:#4a3500}
+.btn.main{color:#fff}
+.view[data-view=book] .btn.main{background:var(--book)}.view[data-view=lab] .btn.main{background:var(--lab)}
+.btn.eat{background:linear-gradient(135deg,#ff8a3d,#ff5e62);color:#fff;font-size:19px;padding:14px;box-shadow:0 5px 0 #c4402f}
+.btn:disabled{opacity:.4;cursor:default}
+.tg{border:2px solid var(--line);background:#fff;border-radius:12px;padding:8px 10px;font-weight:700;font-size:14px;cursor:pointer;color:var(--muted);flex:1 1 auto}
+.tg.on{border-color:#2a2433;color:#2a2433;background:#fffbe8}
+.foods{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.foods button{border:2px solid var(--line);background:#fff;border-radius:14px;padding:8px 2px;cursor:pointer;font-weight:900;font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
+.foods button span{font-size:28px;line-height:1}
+.foods button.on{border-color:#ff7a3d;background:#fff3ea;color:#c2410c}
+.speed{display:flex;gap:6px;margin-top:8px}
+.speed button{flex:1;border:2px solid var(--line);background:#fff;border-radius:10px;padding:7px;font-weight:900;cursor:pointer;color:var(--muted)}
+.speed button.on{border-color:#2a2433;color:#2a2433}
+/* 경로 타임라인 */
+.route{display:flex;flex-direction:column;gap:0;position:relative;padding-left:4px}
+.route .r{display:grid;grid-template-columns:62px 1fr;gap:10px;align-items:center;padding:6px 6px;border-radius:14px;cursor:pointer;transition:.2s;position:relative}
+.route .r .o{width:58px;height:40px;border-radius:999px;display:grid;place-items:center;font-weight:900;font-size:14px;background:#fde3d4;color:#9a3412;line-height:1.1;text-align:center}
+.route .r .t{font-size:13.5px;line-height:1.5;color:var(--muted)}
+.route .r.on{background:#fff3ea}
+.route .r.on .o{background:#ff7a3d;color:#fff;box-shadow:0 0 0 4px rgba(255,122,61,.25)}
+.route .r.on .t{color:var(--ink);font-weight:700}
+.route .r.done .o{background:#ffd5bd}
+.route .r:not(:last-child)::after{content:'';position:absolute;left:35px;bottom:-5px;width:2px;height:10px;background:#d6c8bd}
+.meters{display:grid;gap:9px}
+.mt{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-weight:900;font-size:14px}
+.mt .bar{grid-column:1/-1;height:12px;border-radius:99px;background:#f0edf3;overflow:hidden}
+.mt .bar i{display:block;height:100%;border-radius:99px;transition:width .15s}
+.clock{display:flex;align-items:center;gap:10px;background:#f3f6ff;border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.5}
+.clock b{font-size:17px;color:#1b4fa8}
+.orgcard{border:3px solid #ff7a3d;background:#fffaf5}
+.orgcard h3{margin:0 0 4px;font-family:'Jua';font-weight:400;font-size:28px;color:#c2410c}
+.orgcard p{margin:0;font-size:16px;line-height:1.65}
+.info h3{margin:0 0 6px;font-family:'Jua';font-weight:400;font-size:26px;color:#c2410c}
+.info dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:15.5px;line-height:1.6}
+.info dt{font-weight:900;color:var(--muted)}.info dd{margin:0}
+.info .fact{margin-top:10px;background:#eef7ff;border-radius:12px;padding:8px 12px;font-size:14px;line-height:1.5}
+.poopcard{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:center}
+.poopcard img{width:96px}
+/* cover */
+.cover{position:relative;border-radius:14px;overflow:hidden;cursor:pointer;min-height:48px}
+.cover .ans{padding:10px 12px;background:#f3fbf6;border:2px solid #bfe6cd;border-radius:14px;font-size:15.5px;line-height:1.6}
+.cover .lid{position:absolute;inset:0;border-radius:14px;display:grid;place-items:center;font-weight:900;font-size:15px;color:#4a3500;background:repeating-linear-gradient(45deg,#ffd84d 0 14px,#ffcb1f 14px 28px);transition:transform .45s cubic-bezier(.6,-0.2,.4,1.2),opacity .45s}
+.cover.open .lid{transform:translateY(-110%);opacity:0}
+.q{font-size:16px;line-height:2.2;margin:4px 0}
+.ch{display:inline-flex;gap:4px;vertical-align:middle;background:#f4f1f8;border-radius:12px;padding:3px;margin:0 2px;flex-wrap:wrap}
+.ch button{border:0;background:transparent;border-radius:9px;padding:4px 10px;font-weight:900;font-size:15px;cursor:pointer;color:#6c6579}
+.ch button.sel{background:#2a2433;color:#fff}
+.ch.right button.sel{background:var(--ok)}.ch.wrong button.sel{background:var(--no)}
+.fb{font-weight:900;font-size:15px;margin-top:6px;min-height:22px;line-height:1.5}
+.fb.ok{color:var(--ok)}.fb.no{color:var(--no)}
+.blank{display:inline-flex;gap:4px;vertical-align:middle}
+.blank span{display:inline-grid;place-items:center;width:34px;height:34px;border:2px solid #2a2433;border-radius:6px;font-weight:900;font-size:17px;background:#fff}
+/* 이름 칩 */
+.tray{display:flex;flex-wrap:wrap;gap:8px}
+.nchip{border:2px solid #e98a5a;background:#fff;color:#9a3412;border-radius:999px;padding:9px 16px;font-weight:900;font-size:16px;cursor:grab;touch-action:none;user-select:none}
+.nchip.pick{background:#ffcf2e;border-color:#b8860b;color:#4a3500}
+.nchip.used{opacity:.25;pointer-events:none}
+.ghost{position:fixed;z-index:99;pointer-events:none;transform:translate(-50%,-50%) scale(1.1);box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.fcard{border:2px solid var(--line);border-radius:16px;padding:10px 12px}
+.fcard .h{font-weight:900;font-size:15px;color:#c2410c;margin-bottom:2px}
+.fcard textarea{min-height:56px}
+textarea{width:100%;min-height:80px;border:2px solid var(--line);border-radius:14px;padding:10px 12px;font:500 15px/1.6 'Noto Sans KR';resize:vertical}
+textarea:focus{outline:none;border-color:var(--lab)}
+/* 정리 경로 */
+.path{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:900;font-size:16px}
+.slot{min-width:78px;height:42px;border:2px dashed #b9b2c4;border-radius:12px;display:grid;place-items:center;padding:0 8px;cursor:pointer;background:#fff;color:#2a2433}
+.slot.fill{border-style:solid;border-color:#e98a5a;background:#fff3ea}
+.slot.right{border-color:var(--ok);background:#eafaf0}.slot.wrong{border-color:var(--no);background:#fff0f0}
+.self{display:grid;gap:8px}
+.self .r{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;font-size:14px;line-height:1.5;padding:8px 10px;border-radius:12px;background:#fafafa}
+.self .r .tag{font-size:11.5px;font-weight:900;padding:2px 7px;border-radius:999px;color:#fff;margin-right:4px}
+.faces{display:flex;gap:4px}.faces button{border:2px solid transparent;background:#fff;border-radius:10px;font-size:22px;width:40px;height:40px;cursor:pointer;filter:grayscale(1);opacity:.6}
+.faces button.on{filter:none;opacity:1;border-color:var(--lab)}
+.safety{background:#fff4f2;border:1px solid #ffd2c9;border-radius:14px;padding:8px 12px;font-size:13.5px;line-height:1.5}
+.helper{background:#f2f8ff;border:1px solid #d4e6ff;border-radius:14px;padding:8px 12px;font-size:13.5px;line-height:1.5}
+.stat2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center}
+.stat2 div{background:#fafafa;border-radius:12px;padding:8px 4px;font-size:12.5px;color:var(--muted);font-weight:700}
+.stat2 b{display:block;font-size:22px;color:var(--ink)}
+@media (max-width: 1000px){
+  .page{grid-template-columns:1fr;height:auto;min-height:0}
+  .stage{height:60vh}
+  .unit h1{font-size:21px}.unit small{display:none}
+  .tab{padding:8px 12px;font-size:15px}
+}
+@media (max-width: 640px){ .unit .num{display:none} .tab .pg{display:none} .toc span{display:none} }
+
+/* ---- 3차시 추가 ---- */
+.stage{background:radial-gradient(ellipse at 50% 38%,#ffffff 0%,#f2f4f3 55%,#e2e7e5 100%)}
+.stage.lab{background:radial-gradient(ellipse at 50% 30%,#ffffff 0%,#eef2f5 60%,#dfe5ea 100%)}
+.lbl{border-color:#e05a5a;color:#a3161c}
+.lbl.v{border-color:#4f7fe0;color:#1b47a8}
+.labels line{stroke:#c0392b}
+.ldot{background:#e05a5a}
+.legend{position:absolute;left:14px;bottom:14px;display:flex;flex-direction:column;gap:6px;z-index:3;pointer-events:none}
+.legend span{background:rgba(255,255,255,.93);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.legend i{width:26px;height:6px;border-radius:9px;display:block}
+.bpm{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center}
+.bpm .hrt{font-size:44px;line-height:1;transition:transform .08s}
+.bpm b{font-size:30px;font-family:'Jua';font-weight:400;color:#c0392b}
+.bpm small{color:var(--muted);font-size:13px;font-weight:700}
+.seg2{display:flex;background:#f2eff6;border-radius:14px;padding:4px;gap:4px}
+.seg2 button{flex:1;border:0;background:transparent;border-radius:11px;padding:10px 6px;font-weight:900;font-size:15px;color:var(--muted);cursor:pointer}
+.seg2 button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.big2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.big2 div{background:#fafafa;border-radius:14px;padding:10px;text-align:center;font-size:13px;color:var(--muted);font-weight:700}
+.big2 b{display:block;font-size:24px;color:var(--ink);font-family:'Jua';font-weight:400}
+.btn.cpr{background:linear-gradient(135deg,#ff5e62,#d7263d);color:#fff;font-size:20px;padding:16px;box-shadow:0 5px 0 #9e1a2c;touch-action:manipulation;user-select:none}
+.btn.cpr:active{transform:translateY(4px);box-shadow:0 1px 0 #9e1a2c}
+.btn.aed{background:#14a44d;color:#fff}
+.btn.pump{background:linear-gradient(135deg,#3a3a3a,#111);color:#fff;font-size:19px;padding:16px;box-shadow:0 5px 0 #000;touch-action:none;user-select:none}
+.btn.pump.down{transform:translateY(4px);box-shadow:0 1px 0 #000}
+.o2{height:18px;border-radius:99px;background:#eee;overflow:hidden}
+.o2 i{display:block;height:100%;background:linear-gradient(90deg,#e5484d,#f5a524 40%,#18a058 75%);transition:width .2s}
+.warn{font-weight:900;font-size:15px;min-height:22px;line-height:1.5}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:5;transition:opacity .5s}
+.aedsym{display:grid;place-items:center;width:84px;height:84px;border-radius:18px;background:#14a44d;flex:none}
+.cmp{display:grid;grid-template-columns:1fr auto 1fr;gap:6px 8px;align-items:center;font-weight:900;font-size:15px;text-align:center}
+.cmp span{background:#fafafa;border-radius:12px;padding:8px}
+table.mt3{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:14px}
+table.mt3 th{background:#eef6f4;padding:8px 4px;font-weight:900}
+table.mt3 td{padding:8px 4px;text-align:center;border-top:1px solid var(--line)}
+table.mt3 .ch{flex-direction:column}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<header class="top">
+  <a class="toc" href="../">📚<span> 목차</span></a>
+  <div class="unit">
+    <div class="num">3</div>
+    <div><h1>혈액은 어떻게 온몸을 돌까?</h1><small>4. 우리 몸의 구조와 기능 · 순환기관</small></div>
+  </div>
+  <nav class="tabs">
+    <button class="tab on" data-view="book">📘 과학 교과서<span class="pg">94~95쪽</span></button>
+    <button class="tab" data-view="lab">📗 실험관찰<span class="pg">56~57쪽</span></button>
+  </nav>
+  <button class="icobtn" id="soundBtn" title="소리 켜기/끄기">🔊</button>
+  <button class="icobtn" id="fsBtn" title="전체 화면">⛶</button>
+</header>
+
+<!-- =================== 교과서 =================== -->
+<section class="view on" data-view="book">
+  <div class="steps">
+    <span class="who">📘 교과서</span>
+    <button class="step on" data-go="book-1">① 혈액 순환과 순환기관 <small>94~95쪽</small></button>
+    <button class="step" data-go="book-2">② 혈액의 여행 ❤️ <small>95쪽</small></button>
+    <button class="step" data-go="book-3">③ 한눈에 쏙 · 생각+ <small>95쪽</small></button>
+  </div>
+
+  <div class="page on" data-id="book-1">
+    <div class="stage" data-scene="circ"><div class="boot">3D 순환기관 준비 중…</div></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">❤️ 혈액 순환과 순환기관 <span class="pgtag">94쪽</span></div>
+        <p class="lead">우리가 살아가기 위해서는 <b>혈액</b>이 끊임없이 온몸을 돌아야 해요. 이러한 혈액의 이동을 <b>혈액 순환</b>이라고 하고, 이를 담당하는 기관을 <b>순환기관</b>이라고 해요.</p>
+        <div class="gloss">순환기관에는 <b>심장</b>과 <b>혈관</b>이 있어요. 심장은 끊임없이 <b>펌프 작용</b>을 하여 혈액을 온몸으로 보내요.</div>
+      </div>
+      <div class="card">
+        <div class="row">
+          <button class="tg on" data-t="labels">🏷️ 이름표</button>
+          <button class="tg on" data-t="body">🧍 몸 보이기</button>
+          <button class="tg on" data-t="flow">🔴 혈액 흐름</button>
+        </div>
+      </div>
+      <div class="card info" id="orgInfo"></div>
+      <div class="card" style="display:grid;grid-template-columns:84px 1fr;gap:12px;align-items:center">
+        <div class="aedsym"><svg viewBox="0 0 64 64" width="62" height="62"><path d="M32 56 C 6 38 4 22 14 14 C 22 8 29 12 32 18 C 35 12 42 8 50 14 C 60 22 58 38 32 56 Z" fill="#fff"/><path d="M35 19 L 25 35 L 32 35 L 28 48 L 40 29 L 33 29 L 37 19 Z" fill="#14a44d"/></svg></div>
+        <div><div class="sub">🚑 응급 상황에 쓰는 도구예요. 이 표시는 무엇을 뜻할까요?</div>
+          <div class="cover"><div class="ans"><b>자동심장충격기(AED)</b>예요. 심장이 갑자기 멈춘 사람의 심장에 전기 충격을 주어 다시 뛰도록 돕는 도구예요.</div><div class="lid">👆 눌러서 정답 보기</div></div></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="page" data-id="book-2">
+    <div class="stage" data-scene="circ"></div>
+    <aside class="panel">
+      <div class="card">
+        <div class="bpm"><div class="hrt" data-hrt>❤️</div><div><small>지금 심장 박동</small><br><b data-bpm>70</b> <small>번 / 1분</small></div></div>
+        <div class="seg2" style="margin-top:10px" data-act><button class="on" data-a="rest">🧘 쉴 때</button><button data-a="run">🏃 운동할 때</button></div>
+      </div>
+      <div class="card">
+        <div class="sub">🔴 혈액 하나 따라가기</div>
+        <div class="row">
+          <button class="btn" data-follow="head">🧠 머리로</button>
+          <button class="btn" data-follow="arm">💪 팔로</button>
+          <button class="btn" data-follow="leg">🦵 다리로</button>
+        </div>
+        <button class="btn" data-follow="off" style="width:100%;margin-top:8px">🔭 온몸 보기</button>
+      </div>
+      <div class="card orgcard" data-cur></div>
+      <div class="card"><div class="big2"><div>심장이 뛴 횟수<b data-beats>0</b></div><div>온몸에 전한 산소·영양소<b data-deliv>0</b></div></div>
+        <div class="clock" style="margin-top:8px">⏱️ <div>실제 우리 몸에서는 혈액이 온몸을<br><b>한 바퀴 도는 데 약 1분</b> 정도 걸려요</div></div></div>
+      <div class="card"><div class="sub">🗺️ 혈액이 도는 길</div><div class="route" data-route></div></div>
+    </aside>
+  </div>
+
+  <div class="page" data-id="book-3">
+    <div class="stage" data-scene="circ"></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">✅ 한눈에 쏙 <span class="pgtag">95쪽</span></div>
+        <div class="q">1. 순환기관은 <span class="blank"><span id="bk1">ㅎ</span><span id="bk2">ㅇ</span></span>이/가 온몸을 순환하도록 합니다.</div>
+        <div class="ch" data-quiz="hy" data-ans="혈액"><button>음식물</button><button>혈액</button><button>공기</button><button>근육</button></div>
+        <div class="fb" data-fb="hy"></div>
+      </div>
+      <div class="card">
+        <div class="sub">💭 생각+ 2. 심장박동이 멈추었을 때 빠른 시간 안에 심폐 소생술을 해야 합니다. 그 까닭은 무엇인지 이야기해 봅시다.</div>
+        <button class="btn hot" id="cprStop" style="width:100%">💔 심장이 멈추면 어떻게 될까?</button>
+        <div id="cprBox" hidden style="margin-top:10px">
+          <div class="sub" style="margin-bottom:4px">🧠 뇌에 전해지는 산소</div>
+          <div class="o2"><i id="o2bar" style="width:100%"></i></div>
+          <div class="muted" style="margin:6px 0">심장이 멈춘 뒤 실제 시간: <b id="cprTime">0초</b></div>
+          <div class="warn" id="cprWarn"></div>
+          <button class="btn cpr" id="cprPress" style="width:100%;margin-top:6px">👐 가슴 압박하기 (빠르게 꾹꾹!)</button>
+          <div class="row" style="margin-top:8px">
+            <div class="muted" style="flex:1">압박 빠르기: <b id="cprRate">-</b> 번/1분<br><span style="font-size:12.5px">알맞은 빠르기: 1분에 100~120번</span></div>
+            <button class="tg" id="cprBeat" style="flex:0 0 auto">🎵 박자 소리</button>
+          </div>
+          <button class="btn aed" id="cprAed" style="width:100%;margin-top:8px" disabled>⚡ 자동심장충격기 사용하기</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sub">🗣️ 친구와 이야기해 본 뒤 확인해요</div>
+        <div class="cover"><div class="ans">심장이 멈추면 혈액이 온몸을 돌지 못해서 <b>뇌와 몸에 산소와 영양소가 전해지지 않아요.</b> 특히 뇌는 산소가 몇 분만 전해지지 않아도 크게 다칠 수 있어요. 그래서 <b>빨리 심폐 소생술을 해서 혈액이 계속 돌게 해야</b> 해요.</div><div class="lid">👆 눌러서 확인</div></div>
+      </div>
+      <div class="safety">📞 실제 상황에서는 먼저 <b>119에 신고</b>하고, 주변에 <b>자동심장충격기</b>를 가져와 달라고 부탁해요.</div>
+    </aside>
+  </div>
+</section>
+
+<!-- =================== 실험관찰 =================== -->
+<section class="view" data-view="lab">
+  <div class="steps">
+    <span class="who">📗 실험관찰</span>
+    <button class="step" data-go="lab-1">① 순환기관 알아보기 <small>56쪽</small></button>
+    <button class="step" data-go="lab-2">② 순환기관 모형실험 <small>57쪽</small></button>
+    <button class="step" data-go="lab-3">③ 정리 · 스스로 평가 <small>57쪽</small></button>
+  </div>
+
+  <div class="page" data-id="lab-1">
+    <div class="stage" data-scene="circ"></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">🔎 순환기관의 구조와 기능 <span class="pgtag">56쪽</span></div>
+        <p class="lead"><b>1</b> 이름 카드를 끌어서 3D 몸의 <b>알맞은 순환기관</b>에 놓아 보세요. (카드를 누른 뒤 빈칸을 눌러도 돼요.)</p>
+      </div>
+      <div class="card">
+        <div class="tray" id="tray"></div>
+        <div class="fb" id="trayFb"></div>
+      </div>
+      <div class="card">
+        <div class="sub"><b>2</b> 순환기관의 기능을 조사해 써 봅시다.</div>
+        <div style="display:grid;gap:8px">
+          <div class="fcard"><div class="h" style="color:#c0392b">심장</div>
+            <div class="q" style="line-height:2"><span class="ch" data-quiz="f1" data-ans="펌프 작용"><button>펌프 작용</button><button>소화 작용</button></span>으로 혈액을 온몸으로 순환시켜요. 가슴 중앙에서 <span class="ch" data-quiz="f2" data-ans="왼쪽"><button>왼쪽</button><button>오른쪽</button></span>으로 약간 치우쳐 있어요.</div>
+            <textarea placeholder="더 조사한 내용을 써 봐요"></textarea></div>
+          <div class="fcard"><div class="h" style="color:#1b47a8">혈관</div>
+            <div class="q" style="line-height:2">혈액이 이동하는 <span class="ch" data-quiz="f3" data-ans="통로"><button>통로</button><button>주머니</button></span>이며, <span class="ch" data-quiz="f4" data-ans="온몸"><button>가슴에만</button><button>온몸</button></span>에 퍼져 있어요.</div>
+            <textarea placeholder="더 조사한 내용을 써 봐요"></textarea></div>
+        </div>
+        <div class="fb" data-fb="fn"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="page" data-id="lab-2">
+    <div class="stage lab" data-scene="pump"></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">🧪 순환기관 모형실험 <span class="pgtag">57쪽</span></div>
+        <p class="lead">식용 색소를 녹인 물에 한쪽 호스를 넣고, 다른 쪽 호스는 물에 잠기지 않게 했어요. <b>펌프를 쥐었다 폈다</b> 하며 붉은 색소 물이 이동하는 모습을 관찰해요.</p>
+      </div>
+      <div class="card">
+        <button class="btn pump" id="pumpBtn" style="width:100%">✊ 펌프 꾹 쥐기 (누르고 있다가 떼요)</button>
+        <div class="muted" style="margin:6px 0 8px">3D 화면의 검은 펌프를 직접 눌러도 돼요.</div>
+        <div class="seg2" id="autoSeg"><button class="on" data-v="0">✋ 직접</button><button data-v="45">🐢 천천히 자동</button><button data-v="110">🐇 빠르게 자동</button></div>
+        <div class="big2" style="margin-top:8px"><div>펌프를 쥔 횟수<b id="pCount">0</b></div><div>호스를 지나간 물<b id="pVol">0 mL</b></div></div>
+      </div>
+      <div class="card">
+        <div class="sub">① 관찰한 것을 써 봅시다.</div>
+        <div class="q">• 펌프를 쥐었다 펴면 붉은 색소 물이 호스를 따라 <span class="ch" data-quiz="o1" data-ans="이동해요"><button>이동해요</button><button>그대로예요</button></span></div>
+        <div class="q">• 펌프를 빠르게 쥐었다 펴면 붉은 색소 물이 <span class="ch" data-quiz="o2" data-ans="빠르게"><button>빠르게</button><button>느리게</button></span> 이동해요.</div>
+        <div class="q">• 물은 수조 → 호스 → 펌프 → 호스 → <span class="ch" data-quiz="o3" data-ans="수조"><button>수조</button><button>밖</button></span>로 계속 돌아요.</div>
+        <textarea placeholder="더 관찰한 내용을 써 봐요"></textarea>
+        <div class="fb" data-fb="obs"></div>
+      </div>
+      <div class="card">
+        <div class="sub">② 붉은 색소 물, 호스, 펌프는 우리 몸의 어떤 부분과 같은 역할을 할까요?</div>
+        <table class="mt3"><tr><th>붉은 색소 물</th><th>호스</th><th>펌프</th></tr>
+          <tr><td><span class="ch" data-tbl="혈액"><button>혈액</button><button>혈관</button><button>심장</button></span></td>
+              <td><span class="ch" data-tbl="혈관"><button>혈액</button><button>혈관</button><button>심장</button></span></td>
+              <td><span class="ch" data-tbl="심장"><button>혈액</button><button>혈관</button><button>심장</button></span></td></tr></table>
+        <button class="btn main" id="tblCheck" style="width:100%;margin-top:10px">정답 확인하기</button>
+        <div class="fb" id="tblFb"></div>
+        <button class="tg" id="cmpBtn" style="width:100%;margin-top:6px">🔁 모형에 우리 몸 이름 붙여 보기</button>
+      </div>
+      <div class="safety">⚠️ <b>안전</b> 붉은 색소 물이 눈에 튀지 않도록 조심해요. 실험에 사용하는 물질은 맛보지 않아요.</div>
+    </aside>
+  </div>
+
+  <div class="page" data-id="lab-3">
+    <div class="stage" data-scene="circ"></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">📝 정리해요 <span class="pgtag">57쪽</span></div>
+        <div class="sub">혈액이 우리 몸속에서 어떻게 순환하는지 써 봅시다.</div>
+        <div class="q">• <span class="ch" data-quiz="s1" data-ans="심장"><button>위</button><button>심장</button><button>뼈</button></span>의 펌프 작용으로 혈액이 <span class="ch" data-quiz="s2" data-ans="혈관"><button>혈관</button><button>식도</button><button>근육</button></span>을/를 통해 온몸을 순환합니다.</div>
+        <div class="fb" data-fb="sum"></div>
+      </div>
+      <div class="card">
+        <div class="sub">⭐ 스스로 평가하기</div>
+        <div class="self">
+          <div class="r"><div><span class="tag" style="background:#7c4dff">지식·이해</span>순환기관의 구조와 기능을 설명할 수 있어요.</div><div class="faces"><button>😄</button><button>🙂</button><button>😐</button></div></div>
+          <div class="r"><div><span class="tag" style="background:#0b8f80">과정·기능</span>순환기관 모형실험으로 혈액이 우리 몸속에서 어떻게 순환하는지 관찰할 수 있어요.</div><div class="faces"><button>😄</button><button>🙂</button><button>😐</button></div></div>
+          <div class="r"><div><span class="tag" style="background:#ef6c00">가치·태도</span>순환기관 모형실험에 모둠원과 협력하면서 참여했어요.</div><div class="faces"><button>😄</button><button>🙂</button><button>😐</button></div></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const V3=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+function ss(a,b,x){ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); }
+const SVGNS='http://www.w3.org/2000/svg';
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function hash(i){ const x=Math.sin(i*127.1+311.7)*43758.5453; return x-Math.floor(x); }
+let seedN=7; function srnd(a=0,b=1){ seedN++; return a+(b-a)*hash(seedN*1.37); }
+
+let AC=null, soundOn=true;
+function ac(){ if(!soundOn) return null; if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return null;} } if(AC.state==='suspended') AC.resume().catch(()=>{}); return AC; }
+function tone(f,d,type='sine',v=.15,f2=0,delay=0){ const a=ac(); if(!a) return; const t0=a.currentTime+delay; const o=a.createOscillator(), g=a.createGain(); o.type=type; o.frequency.setValueAtTime(f,t0); if(f2) o.frequency.exponentialRampToValueAtTime(f2,t0+d); g.gain.setValueAtTime(v,t0); g.gain.exponentialRampToValueAtTime(.0008,t0+d); o.connect(g).connect(a.destination); o.start(t0); o.stop(t0+d+.02); }
+function noise(d=.15,v=.12,hp=1500,lp=0){ const a=ac(); if(!a) return; const b=a.createBuffer(1,a.sampleRate*d,a.sampleRate); const ch=b.getChannelData(0); for(let i=0;i<ch.length;i++) ch[i]=(Math.random()*2-1)*(1-i/ch.length); const s=a.createBufferSource(); s.buffer=b; let n=s; const f=a.createBiquadFilter(); f.type='highpass'; f.frequency.value=hp; n.connect(f); n=f; if(lp){ const l=a.createBiquadFilter(); l.type='lowpass'; l.frequency.value=lp; n.connect(l); n=l; } const g=a.createGain(); g.gain.value=v; n.connect(g).connect(a.destination); s.start(); }
+function setOpacity(mats,op){ (Array.isArray(mats)?mats:[mats]).forEach(m=>{ const t=op<.99; if(m.transparent!==t){ m.transparent=t; m.needsUpdate=true; } m.opacity=op; m.depthWrite=!t; }); }
+function isVisible(o){ while(o){ if(o.visible===false) return false; o=o.parent; } return true; }
+function sph(r,mat,x=0,y=0,z=0,sx=1,sy=1,sz=1){ const m=new THREE.Mesh(new THREE.SphereGeometry(1,28,20),mat); m.position.set(x,y,z); m.scale.set(r*sx,r*sy,r*sz); return m; }
+
+/* ==================================================================
+   Stage (3D 화면 틀)
+================================================================== */
+class Stage{
+  constructor(o={}){
+    this.o=o;
+    this.root=document.createElement('div'); this.root.className='stage-root';
+    const r=this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+    r.setPixelRatio(Math.min(window.devicePixelRatio||1,2)); r.toneMapping=THREE.ACESFilmicToneMapping; r.toneMappingExposure=o.exposure||1.0; r.outputColorSpace=THREE.SRGBColorSpace; r.setClearColor(0,0);
+    this.canvas=r.domElement; this.root.appendChild(this.canvas);
+    this.lab=document.createElement('div'); this.lab.className='labels'; this.svg=document.createElementNS(SVGNS,'svg'); this.lab.appendChild(this.svg); this.root.appendChild(this.lab);
+    this.hud=document.createElement('div'); this.hud.className='hud'; this.root.appendChild(this.hud);
+    this.toastEl=document.createElement('div'); this.toastEl.className='toast'; this.root.appendChild(this.toastEl);
+    const tools=document.createElement('div'); tools.className='stage-tools'; this.root.appendChild(tools); this.tools=tools;
+    this.scene=new THREE.Scene();
+    this.camera=new THREE.PerspectiveCamera(o.fov||35,1,.005,100);
+    const pm=new THREE.PMREMGenerator(r); this.scene.environment=pm.fromScene(new RoomEnvironment(),.04).texture; this.scene.environmentIntensity=o.envI??.6;
+    this.scene.add(new THREE.HemisphereLight('#ffffff','#c9b8a6',.9));
+    const key=new THREE.DirectionalLight('#fff6ec',1.8); key.position.set(2,4,5); this.scene.add(key);
+    const fill=new THREE.DirectionalLight('#e3ecff',.6); fill.position.set(-4,1,2); this.scene.add(fill);
+    const rim=new THREE.DirectionalLight('#ffffff',.9); rim.position.set(-1,3,-4); this.scene.add(rim);
+    this.ray=new THREE.Raycaster(); this.ndc=new THREE.Vector2(); this.labels=[];
+    this.canvas.addEventListener('pointerdown',e=>this._pd(e));
+    this.canvas.addEventListener('pointermove',e=>this._pm(e));
+    window.addEventListener('pointerup',e=>this._pu(e)); window.addEventListener('pointercancel',e=>this._pu(e));
+    this.controls=new OrbitControls(this.camera,this.canvas); this.controls.enableDamping=true; this.controls.dampingFactor=.09; this.controls.enablePan=false; this.controls.rotateSpeed=.8;
+    this.fit=o.fit; this.dir=(o.dir||V3(0,0,1)).clone().normalize();
+    new ResizeObserver(()=>this.resize()).observe(this.root);
+    this.active=false; this._tt=0;
+  }
+  addTool(label,fn){ const b=document.createElement('button'); b.innerHTML=label; b.onclick=fn; this.tools.appendChild(b); return b; }
+  mount(el){ const boot=el.querySelector('.boot'); if(boot) boot.remove(); if(this.root.parentNode!==el) el.appendChild(this.root); requestAnimationFrame(()=>this.resize(true)); this.start(); }
+  start(){ if(this.active) return; this.active=true; this.last=performance.now(); const loop=t=>{ if(!this.active) return; const dt=Math.min(.05,Math.max(0,(t-this.last)/1000)); this.last=t; this.update&&this.update(dt,t/1000); this.camTween(dt); this.controls.update(); this.renderer.render(this.scene,this.camera); this.updateLabels(); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+  stop(){ this.active=false; }
+  resize(force){ const w=this.root.clientWidth, h=this.root.clientHeight; if(w<2||h<2) return; if(!force && w===this._w && h===this._h) return; this._w=w; this._h=h; this.renderer.setSize(w,h,false); this.camera.aspect=w/h; this.camera.updateProjectionMatrix(); this.fitCam(); }
+  goalFor(f){ const t=Math.tan(THREE.MathUtils.degToRad(this.camera.fov/2)); const d=Math.max(f.h/2/t, f.w/2/(t*this.camera.aspect))*(f.pad||1.05); return {p:f.c.clone().addScaledVector(f.dir?f.dir.clone().normalize():this.dir,d),c:f.c.clone(),d}; }
+  tweenFit(f){ this.fit=f; if(!this._w){ return; } const g=this.goalFor(f); this._ct={k:0,p0:this.camera.position.clone(),c0:this.controls.target.clone(),...g}; }
+  camTween(dt){ const c=this._ct; if(!c) return; c.k=Math.min(1,c.k+dt/1.0); const e=ease(c.k); this.camera.position.lerpVectors(c.p0,c.p,e); this.controls.target.lerpVectors(c.c0,c.c,e); if(c.k>=1){ this._ct=null; this.controls.minDistance=.1; this.controls.maxDistance=c.d*2; } }
+  fitCam(){ const f=this.fit; if(!f) return; const g=this.goalFor(f); this.camera.position.copy(g.p); this.controls.target.copy(g.c); this.camera.lookAt(g.c); this.controls.minDistance=.1; this.controls.maxDistance=g.d*2; this.controls.update(); }
+  pick(e,objs){ const b=this.canvas.getBoundingClientRect(); this.ndc.set((e.clientX-b.left)/b.width*2-1,-(e.clientY-b.top)/b.height*2+1); this.ray.setFromCamera(this.ndc,this.camera); const h=this.ray.intersectObjects(objs,false); return h.find(x=>isVisible(x.object))||null; }
+  _pd(e){ ac(); this._down={x:e.clientX,y:e.clientY,t:performance.now()}; }
+  _pm(e){ if(e.pointerType==='mouse'&&e.buttons===0&&this.hover) this.hover(e); }
+  _pu(e){ if(this._down&&this.active){ const d=Math.hypot(e.clientX-this._down.x,e.clientY-this._down.y); if(d<8&&performance.now()-this._down.t<700&&this.click&&e.target===this.canvas) this.click(e); } this._down=null; }
+  addLabel(o){ const el=document.createElement('div'); el.className='lbl '+(o.cls||''); el.innerHTML=o.html; const dot=document.createElement('div'); dot.className='ldot '+(o.cls||''); const ln=document.createElementNS(SVGNS,'line'); this.svg.appendChild(ln); this.lab.append(dot,el);
+    const L={el,dot,ln,pos:o.pos,dx:o.dx||0,dy:o.dy||0,show:o.show!==false,noLine:!!o.noLine,html:o.html,set(h){ if(h!==this.html){ this.html=h; el.innerHTML=h; } },remove:()=>{el.remove();dot.remove();ln.remove(); this.labels=this.labels.filter(x=>x!==L);}}; this.labels.push(L); return L; }
+  updateLabels(){ const w=this._w||1,h=this._h||1; const v=V3();
+    for(const L of this.labels){ let ok=L.show; let x=0,y=0; if(ok){ v.copy(L.pos()).project(this.camera); ok=v.z<1&&v.z>-1; x=(v.x+1)/2*w; y=(1-v.y)/2*h; }
+      const disp=ok?'':'none'; L.el.style.display=disp; L.dot.style.display=(ok&&!L.noLine)?'':'none'; L.ln.style.display=(ok&&!L.noLine)?'':'none'; if(!ok) continue;
+      const bw=L.el.offsetWidth/2+6, bh=L.el.offsetHeight/2+6;
+      const lx=clamp(x+L.dx,bw,w-bw-(this.rightPad||0)), ly=clamp(y+L.dy,bh+4,h-bh-4);
+      L.el.style.left=lx+'px'; L.el.style.top=ly+'px'; L.dot.style.left=x+'px'; L.dot.style.top=y+'px';
+      L.ln.setAttribute('x1',x); L.ln.setAttribute('y1',y); L.ln.setAttribute('x2',lx); L.ln.setAttribute('y2',ly); } }
+  toast(msg,ms=2200){ this.toastEl.innerHTML=msg; this.toastEl.classList.add('show'); clearTimeout(this._tt); this._tt=setTimeout(()=>this.toastEl.classList.remove('show'),ms); }
+  setHud(html){ this.hud.innerHTML=html; }
+}
+
+
+
+const SFX={
+  ok(){ tone(660,.12,'sine',.18); tone(990,.22,'sine',.18,0,.1); },
+  no(){ tone(240,.25,'sawtooth',.06,150); },
+  pop(){ tone(420,.12,'triangle',.14,880); },
+  tick(){ tone(1400,.02,'square',.03); },
+  lub(){ tone(62,.13,'sine',.5,40); tone(110,.06,'triangle',.12,60); },
+  dub(){ tone(78,.09,'sine',.36,52); },
+  press(){ tone(140,.07,'sine',.25,70); noise(.05,.05,200,900); },
+  zap(){ noise(.35,.25,400); tone(900,.3,'sawtooth',.08,120); },
+  squish(){ noise(.12,.09,300,1400); tone(180,.1,'sine',.08,120); },
+  drip(){ tone(rnd(700,1100),.07,'sine',.07,rnd(250,400)); },
+  yay(){ [523,659,784,1046].forEach((f,i)=>tone(f,.18,'sine',.14,0,i*.09)); },
+  spark(){ tone(rnd(1500,2400),.05,'sine',.025); }
+};
+
+/* ---------- 텍스처 ---------- */
+function canvasTex(w,h,draw){ const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); draw(g,w,h); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t; }
+const TEX={};
+function initTextures(){
+  TEX.heart=canvasTex(512,512,(g,w,h)=>{ g.fillStyle='#a51d24'; g.fillRect(0,0,w,h);
+    for(let i=0;i<2200;i++){ g.strokeStyle=Math.random()<.5?`rgba(90,0,10,${rnd(.08,.25)})`:`rgba(230,80,80,${rnd(.08,.25)})`; g.lineWidth=rnd(1,2.5); const x=Math.random()*w,y=Math.random()*h,a=rnd(-.5,.5)+.9; g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(a)*rnd(10,30),y+Math.sin(a)*rnd(10,30)); g.stroke(); }
+    for(let i=0;i<9;i++){ g.fillStyle=`rgba(248,214,140,${rnd(.5,.8)})`; g.beginPath(); let x=Math.random()*w, y=rnd(0,h*.35); g.ellipse(x,y,rnd(20,60),rnd(8,20),rnd(0,3),0,7); g.fill(); }
+    g.fillStyle='rgba(248,214,140,.75)'; g.fillRect(0,h*.28,w,10); });
+  TEX.wet=canvasTex(256,256,(g,w,h)=>{ g.fillStyle='#fff'; g.fillRect(0,0,w,h); for(let i=0;i<2400;i++){ g.fillStyle=`rgba(${Math.random()<.5?'120,40,40':'255,255,255'},${rnd(.04,.14)})`; g.beginPath(); g.arc(Math.random()*w,Math.random()*h,rnd(1,4),0,7); g.fill(); } });
+  TEX.wet.wrapS=TEX.wet.wrapT=THREE.RepeatWrapping;
+  TEX.shadow=canvasTex(256,256,(g,w,h)=>{ const gr=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); gr.addColorStop(0,'rgba(30,60,50,.28)'); gr.addColorStop(1,'rgba(30,60,50,0)'); g.fillStyle=gr; g.fillRect(0,0,w,h); });
+  TEX.flow=canvasTex(256,32,(g,w,h)=>{ g.fillStyle='#d4141f'; g.fillRect(0,0,w,h); for(let i=0;i<40;i++){ g.fillStyle=`rgba(${Math.random()<.5?'120,0,8':'255,120,120'},${rnd(.2,.45)})`; g.beginPath(); g.ellipse(Math.random()*w,Math.random()*h,rnd(4,14),rnd(1.5,4),0,0,7); g.fill(); } });
+  TEX.flow.wrapS=TEX.flow.wrapT=THREE.RepeatWrapping;
+  TEX.wood=canvasTex(512,512,(g,w,h)=>{ g.fillStyle='#d9b98c'; g.fillRect(0,0,w,h); for(let i=0;i<160;i++){ g.strokeStyle=`rgba(${rnd(120,160)|0},${rnd(80,100)|0},50,${rnd(.08,.22)})`; g.lineWidth=rnd(1,3); const y=Math.random()*h; g.beginPath(); g.moveTo(0,y); for(let x=0;x<=w;x+=32) g.lineTo(x,y+Math.sin(x*.02+i)*rnd(2,6)); g.stroke(); } });
+  TEX.wood.wrapS=TEX.wood.wrapT=THREE.RepeatWrapping; TEX.wood.repeat.set(3,2);
+}
+
+/* ---------- 굵기가 변하는 관 ---------- */
+function taperTube(pts,rf,seg=60,rad=10,closed=false){
+  const curve=pts.getPointAt?pts:new THREE.CatmullRomCurve3(pts,closed,'centripetal'); const L=curve.getLength(); const fr=curve.computeFrenetFrames(seg,closed);
+  const pos=[],nor=[],uv=[],idx=[]; const P=V3();
+  for(let i=0;i<=seg;i++){ const u=i/seg; curve.getPointAt(u,P); const r=rf(u,u*L), N=fr.normals[i], B=fr.binormals[i];
+    for(let j=0;j<=rad;j++){ const th=j/rad*Math.PI*2, c=Math.cos(th), s=Math.sin(th); const nx=N.x*c+B.x*s, ny=N.y*c+B.y*s, nz=N.z*c+B.z*s;
+      pos.push(P.x+nx*r,P.y+ny*r,P.z+nz*r); nor.push(nx,ny,nz); uv.push(u*L*8,j/rad);
+      if(i<seg&&j<rad){ const a=i*(rad+1)+j,b=a+rad+1; idx.push(a,b,a+1,b,b+1,a+1); } } }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3)); g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); g.setIndex(idx); return g; }
+
+/* ==================================================================
+   몸과 혈관 설계 (앞 = +z, 사람의 왼쪽 = +x)
+================================================================== */
+const HEART=V3(.024,1.31,.058), RA=V3(-.006,1.305,.06);
+const ARCH=[HEART,V3(.016,1.362,.06),V3(-.002,1.404,.042)];
+function upperRoute(kind,s){
+  if(kind==='head') return [...ARCH,V3(s*.02,1.44,.036),V3(s*.027,1.5,.03),V3(s*.031,1.56,.028),V3(s*.04,1.62,.03),V3(s*.046,1.68,.012),V3(s*.03,1.74,-.008)];
+  return [...ARCH,V3(s*.06,1.418,.034),V3(s*.12,1.428,.024),V3(s*.168,1.402,.02),V3(s*.225,1.322,.022),V3(s*.288,1.222,.03),V3(s*.338,1.12,.04),V3(s*.383,1.032,.046),V3(s*.41,.975,.05),V3(s*.426,.925,.05)];
+}
+const DESC=[...ARCH,V3(-.012,1.375,.005),V3(-.006,1.3,-.014),V3(0,1.2,-.012)];
+function lowerRoute(kind,s){
+  if(kind==='trunk') return [...DESC,V3(s*.035,1.17,.016),V3(s*.07,1.125,.042),V3(s*.062,1.06,.056)];
+  return [...DESC,V3(0,1.08,-.006),V3(0,.985,0),V3(s*.045,.935,.012),V3(s*.083,.86,.022),V3(s*.09,.68,.026),V3(s*.095,.49,.012),V3(s*.098,.3,-.004),V3(s*.1,.12,-.01),V3(s*.103,.055,.035),V3(s*.108,.032,.12)];
+}
+function veinOff(p){ const ax=Math.abs(p.x), w=ss(.018,.06,ax); const dx=Math.sign(p.x||1)*.012*w-.023*(1-w); return V3(p.x+dx,p.y,p.z-.008); }
+function veinOf(art,upper){ if(upper) return [RA,V3(-.024,1.36,.048),V3(-.026,1.41,.034),...art.slice(3).map(veinOff)]; return [RA,V3(-.022,1.255,.03),...art.slice(5).map(veinOff)]; }
+const ROUTES=[]; for(const s of [-1,1]){ for(const k of ['head','arm']){ const a=upperRoute(k,s); ROUTES.push({k,s,art:a,vein:veinOf(a,true)}); } for(const k of ['leg','trunk']){ const a=lowerRoute(k,s); ROUTES.push({k,s,art:a,vein:veinOf(a,false)}); } }
+
+/* ---------- 심장 모형 ---------- */
+function makeHeartGeo(){ const g=new THREE.SphereGeometry(1,72,56); const p=g.attributes.position, v=V3();
+  for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i); let {x,y,z}=v;
+    if(y<0){ const t=-y; const k=1-.78*Math.pow(t,1.35); x*=k; z*=k; y*=1.45; x+=.12*t*t; }   // 아래쪽 끝(심장 끝)을 뾰족하게
+    else { y*=.82; x*=1.05; }
+    x+=.12*Math.exp(-((y-.25)**2)/.08)*(x<0?1:.4)*(z>0?1:.3);                                      // 오른쪽 볼록
+    z*=.78; z+= .06*Math.exp(-((x+.05)**2)/.05)*(z>0?1:0);                                       // 앞쪽 볼록
+    x+=-.05*Math.sin(y*4)*(z>0?Math.exp(-((x-.1)**2)/.03):0);                                     // 앞쪽 고랑
+    p.setXYZ(i,x,y,z); }
+  g.computeVertexNormals(); return g; }
+
+/* ==================================================================
+   순환기관 3D 장면
+================================================================== */
+const RED=new THREE.Color('#ff3b3b'), DRED=new THREE.Color('#7a1d6a'), GOLD=new THREE.Color('#ffd23f'), SKY=new THREE.Color('#bfe8ff');
+class CircScene extends Stage{
+  constructor(){
+    super({fov:32,fit:{c:V3(0,.92,0),w:1.02,h:1.9},dir:V3(.12,.05,1),envI:.7});
+    this.FIT_EX=this.fit; this.FIT_HEART={c:HEART.clone().add(V3(-.01,.02,0)),w:.24,h:.24,dir:V3(.2,.08,1)};
+    this.controls.addEventListener('start',()=>{ this.userT=performance.now(); });
+    const flr=new THREE.Mesh(new THREE.PlaneGeometry(1.4,1.4),new THREE.MeshBasicMaterial({map:TEX.shadow,transparent:true,depthWrite:false})); flr.rotation.x=-Math.PI/2; flr.position.y=.002; this.scene.add(flr);
+    /* 몸 실루엣 (교과서처럼 연두빛) */
+    const bodyM=new THREE.MeshStandardMaterial({color:'#a9e2c3',roughness:.85,transparent:true,opacity:.42,depthWrite:false,side:THREE.BackSide}); this.bodyM=bodyM;
+    this.headM=bodyM.clone(); const body=new THREE.Group(); this.body=body; this.scene.add(body);
+    const prof=[[0,.84],[.07,.845],[.12,.87],[.152,.95],[.148,1.02],[.13,1.1],[.138,1.2],[.15,1.32],[.165,1.41],[.15,1.45],[.09,1.48],[.048,1.5],[.045,1.56],[0,1.57]].map(p=>new THREE.Vector2(p[0],p[1]));
+    const torso=new THREE.Mesh(new THREE.LatheGeometry(prof,48),bodyM); torso.scale.z=.62; body.add(torso);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(1,40,30),this.headM); head.position.set(0,1.67,.005); head.scale.set(.086,.105,.098); body.add(head);
+    const cap=(a,b,r)=>{ const d=b.clone().sub(a); const m=new THREE.Mesh(new THREE.CapsuleGeometry(r,d.length(),6,16),bodyM); m.position.copy(a).add(b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(V3(0,1,0),d.normalize()); body.add(m); return m; };
+    for(const s of [-1,1]){ cap(V3(s*.165,1.42,0),V3(s*.288,1.222,.026),.04); cap(V3(s*.288,1.222,.026),V3(s*.383,1.032,.046),.033); const hd=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),bodyM); hd.position.set(s*.414,.955,.05); hd.scale.set(.028,.05,.016); hd.rotation.z=s*.45; body.add(hd);
+      cap(V3(s*.085,.86,0),V3(s*.095,.49,.008),.064); cap(V3(s*.095,.49,.008),V3(s*.1,.09,-.006),.044); const ft=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),bodyM); ft.position.set(s*.104,.035,.055); ft.scale.set(.042,.03,.105); body.add(ft); }
+    body.traverse(o=>o.renderOrder=10);
+    /* 혈관 */
+    const artG=[],veinG=[]; seedN=11;
+    const rA=(u,d)=>Math.max(.0021,.0088*Math.exp(-d/.42)), rV=(u,d)=>Math.max(.0025,.0095*Math.exp(-d/.42));
+    const branch=(P,T,r0,len,depth,out,side)=>{ const perp=V3().crossVectors(T,V3(0,0,1)); if(perp.lengthSq()<1e-4) perp.set(1,0,0); perp.normalize().multiplyScalar(side);
+      const th=srnd(.45,.95), d=T.clone().multiplyScalar(Math.cos(th)).addScaledVector(perp,Math.sin(th)); d.z+=srnd(-.25,.25); d.normalize();
+      const pts=[P.clone()]; let q=P.clone(), dd=d.clone(); const bend=srnd(-.5,.5);
+      for(let k=1;k<=4;k++){ dd.applyAxisAngle(V3(0,0,1),bend*.35).normalize(); q=q.clone().addScaledVector(dd,len/4); q.z+=srnd(-.002,.002); pts.push(q); }
+      out.push(taperTube(pts,u=>lerp(r0,r0*.28,u),14,6));
+      if(depth>0){ const c=new THREE.CatmullRomCurve3(pts); for(const t of [.45,.8]){ if(srnd()<.75){ const p2=c.getPointAt(t), t2=c.getTangentAt(t); branch(p2,t2,r0*lerp(.75,.45,t),len*srnd(.45,.65),depth-1,out,srnd()<.5?1:-1); } } } };
+    const decor=(curve,rMain,out,limb)=>{ const L=curve.getLength(), T=V3(), P=V3();
+      for(let d=.07;d<L-.03;d+=limb?srnd(.05,.08):srnd(.04,.065)){ const u=d/L; curve.getPointAt(u,P); curve.getTangentAt(u,T); if(P.y>1.33&&Math.abs(P.x)<.05) continue;
+        const r0=Math.min(.0034,rMain(u,d)*.6); const lim=Math.abs(P.x)>.17||P.y<.86||P.y>1.5;
+        branch(P,T,r0,lim?srnd(.03,.05):srnd(.045,.08),lim?1:2,out,srnd()<.5?1:-1); } };
+    for(const R of ROUTES){ const ca=new THREE.CatmullRomCurve3(R.art,false,'centripetal'), cv=new THREE.CatmullRomCurve3(R.vein,false,'centripetal'); R.ca=ca; R.cv=cv;
+      const limb=R.k==='arm'||R.k==='leg';
+      artG.push(taperTube(ca,rA,Math.round(ca.getLength()*120),10)); veinG.push(taperTube(cv,rV,Math.round(cv.getLength()*120),10));
+      decor(ca,rA,artG,limb); decor(cv,rV,veinG,limb);
+      // 모세혈관 고리
+      const ea=R.art[R.art.length-1], ev=R.vein[R.vein.length-1]; const mid=ea.clone().lerp(ev,.5).add(ea.clone().sub(R.art[R.art.length-2]).normalize().multiplyScalar(.012));
+      R.cap=[ea,mid,ev]; }
+    const artM=new THREE.MeshPhysicalMaterial({color:'#d8232c',roughness:.38,clearcoat:.6,clearcoatRoughness:.3,emissive:'#ff3030',emissiveIntensity:0});
+    const veinM=new THREE.MeshPhysicalMaterial({color:'#2f5fd0',roughness:.4,clearcoat:.5,clearcoatRoughness:.3,emissive:'#3060ff',emissiveIntensity:0});
+    this.art=new THREE.Mesh(mergeGeometries(artG),artM); this.vein=new THREE.Mesh(mergeGeometries(veinG),veinM);
+    this.art.userData.org='혈관'; this.vein.userData.org='혈관'; this.scene.add(this.art,this.vein); this.vMats=[artM,veinM];
+    const capG=ROUTES.map(R=>taperTube(R.cap,()=>.0018,10,6)); const capM=new THREE.MeshStandardMaterial({color:'#9b3a7a',roughness:.5}); this.scene.add(new THREE.Mesh(mergeGeometries(capG),capM));
+    /* 심장 */
+    const hM=new THREE.MeshPhysicalMaterial({color:'#ffffff',map:TEX.heart,bumpMap:TEX.wet,bumpScale:1.2,roughness:.4,clearcoat:.7,clearcoatRoughness:.25,emissive:'#ff4a3a',emissiveIntensity:0}); this.hM=hM;
+    const heart=new THREE.Group(); heart.position.copy(HEART).add(V3(0,-.022,0)); this.scene.add(heart); this.heart=heart;
+    const hv=new THREE.Group(); heart.add(hv); this.hv=hv;
+    const core=new THREE.Mesh(makeHeartGeo(),hM); core.scale.setScalar(.042); core.rotation.set(.25,-.35,.55); hv.add(core); this.hCore=core;
+    const auricle=(x,y,z,sx,col)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),hM); m.position.set(x,y,z); m.scale.set(sx,sx*.7,sx*.8); hv.add(m); return m; };
+    this.atria=[auricle(-.024,.03,.012,.019),auricle(.02,.034,.006,.016)];
+    // 심장 표면의 작은 혈관(관상 혈관)
+    const cor=[[V3(.004,.04,.034),V3(.012,.012,.042),V3(.018,-.02,.036),V3(.024,-.046,.02)],[V3(-.012,.03,.036),V3(-.02,0,.036),V3(-.016,-.03,.03)],[V3(.004,.04,.034),V3(.03,.03,.026),V3(.04,.006,.012)]];
+    cor.forEach((c,i)=>hv.add(new THREE.Mesh(taperTube(c,u=>lerp(.0022,.0009,u),20,6),i===1?veinM:artM)));
+    hv.traverse(o=>{ if(o.isMesh){ o.userData.org='심장'; } });
+    this.picks=[this.art,this.vein]; hv.traverse(o=>o.isMesh&&this.picks.push(o));
+    /* 혈액(적혈구) */
+    this.blood=[]; ROUTES.forEach((R,ri)=>{ const pts=[...R.art,R.cap[1],...R.vein.slice().reverse(),HEART.clone().add(V3(.004,-.012,.004))];
+      const c=new THREE.CatmullRomCurve3(pts,true,'centripetal'); const L=c.getLength(); const la=R.ca.getLength(); R.loop=c; R.L=L; R.capU=(la+.004)/L; R.retU=1-.035/L;
+      const n=Math.round(L*20); for(let i=0;i<n;i++) this.blood.push({r:ri,u:(i+hash(i*3+ri))/n,o:hash(i+ri*50),a:hash(i*7+ri)*6.28}); });
+    const rbc=new THREE.SphereGeometry(1,12,9);
+    this.cells=new THREE.InstancedMesh(rbc,new THREE.MeshBasicMaterial({depthTest:false,transparent:true}),this.blood.length); this.cells.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.cells.frustumCulled=false; this.cells.renderOrder=12; this.scene.add(this.cells);
+    for(let i=0;i<this.blood.length;i++) this.cells.setColorAt(i,RED);
+    this.NS=160; this.sparks=[...Array(this.NS)].map(()=>({life:0,p:V3(),v:V3(),c:new THREE.Color()}));
+    this.spk=new THREE.InstancedMesh(new THREE.SphereGeometry(1,8,6),new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,depthTest:false}),this.NS); this.spk.frustumCulled=false; this.spk.renderOrder=14; this.scene.add(this.spk);
+    for(let i=0;i<this.NS;i++) this.spk.setColorAt(i,GOLD);
+    this.mark=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),new THREE.MeshBasicMaterial({color:'#ffd23f',transparent:true,opacity:.55,depthTest:false})); this.mark.renderOrder=13; this.mark.visible=false; this.scene.add(this.mark);
+    /* 이름표 */
+    const armR=ROUTES.find(R=>R.k==='arm'&&R.s===1), legR=ROUTES.find(R=>R.k==='leg'&&R.s===-1);
+    this.anchors={'심장':()=>HEART.clone().add(V3(.02,-.02,.03)),'혈관':()=>armR.ca.getPointAt(.66),'혈관2':()=>legR.cv.getPointAt(.7)};
+    this.L={ '심장':this.addLabel({html:'심장',pos:this.anchors['심장'],dx:150,dy:-40}),
+      '혈관':this.addLabel({html:'혈관',pos:this.anchors['혈관'],dx:120,dy:-60}),
+      '혈관2':this.addLabel({html:'혈관',cls:'v',pos:this.anchors['혈관2'],dx:-120,dy:-40}) };
+    this.curL=this.addLabel({html:'',cls:'cur',pos:()=>this.mark.position.clone(),dx:150,dy:-70,show:false});
+    const lg=document.createElement('div'); lg.className='legend'; lg.innerHTML='<span><i style="background:#d8232c"></i>심장에서 나가는 혈액이 지나는 혈관</span><span><i style="background:#2f5fd0"></i>심장으로 돌아오는 혈액이 지나는 혈관</span>'; this.root.appendChild(lg); this.legend=lg;
+    this.fl=document.createElement('div'); this.fl.className='flash'; this.root.appendChild(this.fl);
+    this.addTool('↺ 처음 시점',()=>{ this.userT=0; this.followK=null; this.tweenFit(this.FIT_EX); this.onFollow&&this.onFollow(null); });
+    /* 상태 */
+    this.opt={labels:true,body:true,flow:true}; this.mode='explore'; this.bpm=70; this.ph=0; this.beats=0; this.deliv=0; this.followK=null; this.fi=-1; this.userT=0; this.time=0;
+    this.stopped=false; this.flowK=1; this.push=0; this.o2=1; this.sel=null;
+    this.click=e=>this.onClick(e);
+    this.hover=e=>{ if(this.mode!=='explore') return; const h=this.pick(e,this.picks); this.canvas.style.cursor=h?'pointer':'grab'; };
+    this.setMode('explore');
+  }
+  setMode(m){ this.mode=m; this.sel=null; this.highlight(null); this.followK=null; this.mark.visible=false; this.curL.show=false;
+    this.stopped=false; this.flowK=1; this.o2=1; this.push=0; this.headM.color.copy(this.bodyM.color);
+    for(const k in this.L) this.L[k].show=m==='explore'&&this.opt.labels;
+    this.controls.enabled=m!=='label';
+    this.legend.style.display=m==='label'?'none':'';
+    this.tweenFit(this.FIT_EX);
+    if(m==='explore') this.setHud('<span class="chip">👆 심장이나 혈관을 눌러 보세요 · 드래그하면 빙글 돌아가요</span>');
+    else if(m==='label') this.setHud('<span class="chip">🏷️ 이름 카드를 알맞은 빈칸에 놓아요</span>');
+    else if(m==='sim') this.setHud('<span class="chip">❤️ 심장이 뛸 때마다 혈액이 온몸으로 밀려 나가요</span>');
+    else if(m==='cpr') this.setHud('<span class="chip">💭 심장이 멈추면 혈액은 어떻게 될까요?</span>');
+    this.applyLook(); }
+  applyLook(){ this.body.visible=this.opt.body; this.cells.visible=this.opt.flow||this.mode!=='explore'; }
+  setOpt(k,v){ this.opt[k]=v; if(k==='labels') for(const n in this.L) this.L[n].show=v&&this.mode==='explore'; this.applyLook(); }
+  highlight(n){ this.hM.emissiveIntensity=n==='심장'?.25:0; this.vMats.forEach(m=>m.emissiveIntensity=n==='혈관'?.35:0); this.L['심장'].el.classList.toggle('sel',n==='심장'); this.L['혈관'].el.classList.toggle('sel',n==='혈관'); this.L['혈관2'].el.classList.toggle('sel',n==='혈관'); }
+  onClick(e){ if(this.mode==='cpr'){ const h=this.pick(e,[...this.picks,...this.body.children]); if(h) this.onChest&&this.onChest(); return; }
+    if(this.mode!=='explore') return; const h=this.pick(e,this.picks); const n=h?h.object.userData.org:null; this.sel=n; this.highlight(n); this.onSelect&&this.onSelect(n); if(n) SFX.pop();
+    if(n==='심장') this.tweenFit(this.FIT_HEART); else if(!n) this.tweenFit(this.FIT_EX); }
+  setActivity(a){ this.bpm=a==='run'?130:70; }
+  follow(k){ this.followK=k; this.userT=0; if(!k){ this.mark.visible=false; this.curL.show=false; this.tweenFit(this.FIT_EX); this.onFollow&&this.onFollow(null); return; }
+    const ri=ROUTES.findIndex(R=>R.k===k&&R.s===1); let best=-1,bu=9; this.blood.forEach((b,i)=>{ if(b.r===ri&&b.u<bu){ bu=b.u; best=i; } }); this.fi=best; this.blood[best].u=.002; this._ct=null; }
+  stopHeart(){ this.stopped=true; this.o2=1; this.tStop=0; this.pressT=[]; this.presses=0; }
+  restart(){ this.stopped=false; this.fl.style.transition='none'; this.fl.style.opacity=.95; requestAnimationFrame(()=>{ this.fl.style.transition='opacity .6s'; this.fl.style.opacity=0; }); SFX.zap(); }
+  chest(){ this.push=1; this.presses=(this.presses||0)+1; const t=performance.now(); this.pressT=(this.pressT||[]).filter(x=>t-x<3000); this.pressT.push(t); SFX.press(); }
+  rate(){ const p=this.pressT||[]; if(p.length<3||performance.now()-p[p.length-1]>1500) return 0; return Math.round(60000*(p.length-1)/(p[p.length-1]-p[0])); }
+  update(dt,T){ this.time+=dt; const sel=this.sel;
+    if(this.mode==='explore'&&sel){ const k=.18+.12*Math.sin(T*6); if(sel==='심장') this.hM.emissiveIntensity=k; else this.vMats.forEach(m=>m.emissiveIntensity=k*1.4); }
+    /* 심장 박동 */
+    let pulse=0, squeeze=0;
+    if(!this.stopped){ const p0=this.ph; this.ph+=dt*this.bpm/60; const f=this.ph%1, f0=p0%1;
+      if(Math.floor(this.ph)>Math.floor(p0)){ this.beats++; if(this.mode!=='label') SFX.lub(); this.onBeat&&this.onBeat(); }
+      if(f0<.3&&f>=.3&&this.mode!=='label') SFX.dub();
+      squeeze=Math.exp(-(((f-.13)/.09)**2)); pulse=.35+1.5*Math.exp(-(((f-.16)/.11)**2)); this.flowK=lerp(this.flowK,1,dt*2); }
+    else { this.tStop+=dt; this.flowK=Math.max(0,this.flowK-dt*1.6); squeeze=this.push; pulse=this.push*2.6; }
+    this.push=Math.max(0,this.push-dt*5);
+    const fa=((this.ph%1)+1)%1; const atr=Math.exp(-(((fa-.9)/.06)**2))*(this.stopped?0:1);
+    this.hCore.scale.set(.042*(1-.075*squeeze),.042*(1-.06*squeeze),.042*(1-.075*squeeze)); this.atria.forEach(a=>{ const s0=a===this.atria[0]?.019:.016; const k=1-.18*atr; a.scale.set(s0*k,s0*.7*k,s0*.8*k); });
+    /* 뇌 산소 (심폐 소생술) */
+    if(this.mode==='cpr'){ const r=this.rate(); const good=r>=95&&r<=130;
+      if(this.stopped){ if(good) this.o2=Math.min(.82,this.o2+dt*.04); else this.o2=Math.max(0,this.o2-dt*(r>0?.02:.042)); }
+      else this.o2=Math.min(1,this.o2+dt*.08);
+      this.headM.color.copy(this.bodyM.color).lerp(new THREE.Color('#8f9bb0'),1-this.o2); this.headM.opacity=.42+.2*(1-this.o2); }
+    /* 혈액 움직임 */
+    const vis=this.cells.visible; const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=V3(), P=V3(), Tn=V3(), col=new THREE.Color(), up=V3(0,1,0);
+    const camD=this.camera.position.distanceTo(this.controls.target), szB=clamp(camD*.0024,.0011,.0068);
+    const spd=.11*(this.bpm/70)*pulse*(this.stopped?1:this.flowK)*(this.mode==='label'?0:1);
+    let fp=null;
+    for(let i=0;i<this.blood.length;i++){ const b=this.blood[i], R=ROUTES[b.r]; const u0=b.u; b.u=(b.u+spd*dt/R.L)%1;
+      if(u0<R.capU&&b.u>=R.capU&&this.mode==='sim'){ this.deliv++; this.spawn(R.loop.getPointAt(R.capU)); }
+      if(!vis) continue;
+      R.loop.getPointAt(b.u,P); R.loop.getTangentAt(b.u,Tn);
+      const off=.0035*Math.min(1,ss(0,.02,b.u)); P.x+=Math.cos(b.a+b.u*40)*off*b.o; P.y+=Math.sin(b.a+b.u*40)*off*b.o;
+      const k=ss(R.capU-.004,R.capU+.03,b.u)*(1-ss(R.retU,1,b.u)); col.copy(RED).lerp(DRED,k);
+      const isF=i===this.fi&&this.followK; const inH=P.distanceToSquared(HEART)<.0021; const s=isF?Math.max(.004,szB*1.8):(inH?0:szB); q.setFromUnitVectors(up,Tn); sc.set(s,s,s); m4.compose(P,q,sc); this.cells.setMatrixAt(i,m4); this.cells.setColorAt(i,col);
+      if(isF){ fp={P:P.clone(),u:b.u,R}; } }
+    if(vis){ this.cells.instanceMatrix.needsUpdate=true; this.cells.instanceColor.needsUpdate=true; }
+    /* 반짝이(산소·영양소) */
+    for(let i=0;i<this.NS;i++){ const s=this.sparks[i]; if(s.life>0){ s.life-=dt/1.1; s.p.addScaledVector(s.v,dt); sc.setScalar(.004*Math.sin(Math.PI*Math.max(0,s.life))+.0002); m4.compose(s.p,q.identity(),sc); this.spk.setColorAt(i,s.c); } else m4.makeScale(0,0,0); this.spk.setMatrixAt(i,m4); }
+    this.spk.instanceMatrix.needsUpdate=true; this.spk.instanceColor.needsUpdate=true;
+    /* 따라가기 */
+    if(fp){ this.mark.visible=true; this.mark.position.copy(fp.P); this.mark.scale.setScalar(.011+.003*Math.sin(T*8));
+      const u=fp.u, cu=fp.R.capU; const st=u<.03?0:u<cu-.02?1:u<cu+.02?2:u<fp.R.retU?3:4; if(st!==this._fst){ this._fst=st; this.onFollow&&this.onFollow(st); }
+      const msg=['❤️ 심장에서 힘차게 밀려 나왔어요','🔴 혈관을 따라 온몸으로 가요','✨ 산소와 영양소를 전해 줘요','🔵 혈관을 따라 심장으로 돌아가요','❤️ 다시 심장으로 돌아왔어요'][st];
+      this.curL.show=true; this.curL.set(msg); this.curL.dx=fp.P.x<0?-170:170;
+      if(performance.now()-this.userT>3000){ const want=fp.P.clone().add(V3(.12,.05,.34)); const k=1-Math.exp(-dt*2.5); this.camera.position.lerp(want,k); this.controls.target.lerp(fp.P,k); } }
+    else { this.mark.visible=false; if(this.followK===null) this.curL.show=false; }
+  }
+  spawn(p){ for(let k=0;k<2;k++){ const s=this.sparks.find(x=>x.life<=0); if(!s) return; s.life=1; s.p.copy(p); s.v.set(rnd(-1,1),rnd(-1,1),rnd(-.5,.5)).normalize().multiplyScalar(rnd(.02,.045)); s.c.copy(k?GOLD:SKY); } if(Math.random()<.15) SFX.spark(); }
+}
+
+/* ==================================================================
+   순환기관 모형실험 장면 (수조 · 호스 · 펌프)
+================================================================== */
+class PumpScene extends Stage{
+  constructor(){
+    super({fov:30,fit:{c:V3(0,.215,0),w:.74,h:.6},dir:V3(.18,.36,1),envI:.85});
+    this.controls.minPolarAngle=.5; this.controls.maxPolarAngle=1.6;
+    const tbl=new THREE.Mesh(new THREE.PlaneGeometry(2,1.4),new THREE.MeshStandardMaterial({map:TEX.wood,roughness:.7})); tbl.rotation.x=-Math.PI/2; this.scene.add(tbl);
+    /* 수조 */
+    const W=.5,H=.25,D=.3, WY=.165; this.WY=WY;
+    const glass=new THREE.MeshPhysicalMaterial({color:'#e8f4ff',roughness:.05,metalness:0,transparent:true,opacity:.14,clearcoat:1,depthWrite:false,envMapIntensity:.4});
+    const box=new THREE.Mesh(new THREE.BoxGeometry(W,H,D),glass); box.position.y=H/2; box.renderOrder=6; this.scene.add(box);
+    const edges=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(W,H,D)),new THREE.LineBasicMaterial({color:'#9fb4c4',transparent:true,opacity:.8})); edges.position.y=H/2; this.scene.add(edges);
+    const rim=new THREE.Mesh(new THREE.BoxGeometry(W+.012,.012,D+.012),new THREE.MeshPhysicalMaterial({color:'#cfe3f2',transparent:true,opacity:.5,roughness:.1})); rim.position.y=H; this.scene.add(rim);
+    const waterM=new THREE.MeshStandardMaterial({color:'#a3001a',roughness:.6,transparent:true,opacity:.8,depthWrite:false,envMapIntensity:0}); this.waterM=waterM;
+    const water=new THREE.Mesh(new THREE.BoxGeometry(W-.008,WY,D-.008),waterM); water.position.y=WY/2+.002; water.renderOrder=5; this.scene.add(water); this.water=water;
+    const surf=new THREE.Mesh(new THREE.PlaneGeometry(W-.008,D-.008),new THREE.MeshPhysicalMaterial({color:'#d0102a',roughness:.03,clearcoat:1,transparent:true,opacity:.6,depthWrite:false})); surf.rotation.x=-Math.PI/2; surf.position.y=WY+.0025; surf.renderOrder=6; this.scene.add(surf);
+    /* 호스 경로 */
+    const pts=[V3(.12,.03,.02),V3(.14,.12,.02),V3(.15,.24,.012),V3(.13,.35,.005),V3(.075,.405,0),V3(.035,.415,0),V3(-.035,.415,0),V3(-.075,.405,0),V3(-.135,.37,0),V3(-.175,.3,.004),V3(-.182,.24,.008),V3(-.175,.205,.01)];
+    const curve=new THREE.CatmullRomCurve3(pts,false,'centripetal'); this.curve=curve; this.L=curve.getLength();
+    const N=240; let uw=0; for(let i=0;i<=N;i++){ if(curve.getPointAt(i/N).y<WY) uw=i/N; } this.uWater=uw;
+    let up0=0,up1=0; for(let i=0;i<=N;i++){ const x=curve.getPointAt(i/N).x; if(!up0&&x<.045) up0=i/N; if(x>-.045) up1=i/N; } this.uP0=up0; this.uP1=up1;
+    this.SEG=N; this.RAD=12;
+    const hose=new THREE.Mesh(new THREE.TubeGeometry(curve,N,.0085,14),new THREE.MeshPhysicalMaterial({color:'#f4f8fb',roughness:.12,transparent:true,opacity:.32,clearcoat:1,depthWrite:false})); hose.renderOrder=8; this.scene.add(hose); this.hose=hose;
+    this.liqM=new THREE.MeshStandardMaterial({map:TEX.flow,color:'#d01020',roughness:.25,envMapIntensity:.4}); TEX.flow.repeat.set(30,1);
+    const liq=new THREE.Mesh(new THREE.TubeGeometry(curve,N,.0066,this.RAD),this.liqM); liq.renderOrder=7; this.scene.add(liq); this.liq=liq;
+    /* 펌프 (고무 주머니) */
+    const rub=new THREE.MeshPhysicalMaterial({color:'#1d1d1f',roughness:.55,clearcoat:.35,clearcoatRoughness:.5});
+    const prof=[]; for(let i=0;i<=30;i++){ const t=i/30; prof.push(new THREE.Vector2(.0095+.031*Math.pow(Math.sin(Math.PI*t),.75),(t-.5)*.11)); }
+    const bulb=new THREE.Mesh(new THREE.LatheGeometry(prof,40),rub); bulb.rotation.z=Math.PI/2; bulb.position.set(0,.415,0); this.scene.add(bulb); this.bulb=bulb;
+    for(const s of [-1,1]){ const v=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.026,24),rub); v.rotation.z=Math.PI/2; v.position.set(s*.066,.414,0); this.scene.add(v);
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(.0105,.0025,8,24),new THREE.MeshStandardMaterial({color:'#666',metalness:.6,roughness:.3})); ring.rotation.y=Math.PI/2; ring.position.set(s*.08,.413,0); this.scene.add(ring); }
+    this.picks=[bulb];
+    /* 물방울·물결 */
+    this.drops=[...Array(140)].map(()=>({on:false,p:V3(),v:V3()}));
+    this.dropM=new THREE.InstancedMesh(new THREE.SphereGeometry(1,10,8),new THREE.MeshPhysicalMaterial({color:'#e3172c',roughness:.05,clearcoat:1,transparent:true,opacity:.92}),140); this.dropM.frustumCulled=false; this.scene.add(this.dropM);
+    this.rings=[...Array(10)].map(()=>{ const m=new THREE.Mesh(new THREE.RingGeometry(.8,1,32),new THREE.MeshBasicMaterial({color:'#ffd0d0',transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide})); m.rotation.x=-Math.PI/2; m.position.y=WY+.004; m.visible=false; m.userData.t=9; this.scene.add(m); return m; });
+    /* 이름표 */
+    this.names={water:['붉은 색소 물','혈액'],hose:['호스','혈관'],pump:['펌프','심장']}; this.cmp=false;
+    this.LB={ water:this.addLabel({html:'붉은 색소 물',pos:()=>V3(-.12,.08,.15),dx:-110,dy:60}),
+      hose:this.addLabel({html:'호스',pos:()=>curve.getPointAt(.83),dx:-120,dy:-30}),
+      pump:this.addLabel({html:'펌프',pos:()=>V3(0,.44,0),dx:30,dy:-80}) };
+    this.hint=this.addLabel({html:'👆 꾹 눌렀다 떼 보세요',cls:'hint',pos:()=>V3(0,.4,.04),dx:140,dy:70});
+    /* 상태 */
+    this.s=0; this.held=false; this.auto=0; this.ph=0; this.front=uw; this.count=0; this.vol=0; this.flowV=0; this.dAcc=0;
+    this.updateLiquid();
+    this.dragStart=e=>{ const h=this.pick(e,this.picks); if(h){ this.press(true); return true; } return false; };
+    this.dragEnd=()=>this.press(false);
+    this.hover=e=>{ const h=this.pick(e,this.picks); this.canvas.style.cursor=h?'pointer':''; };
+    this.setHud('<span class="chip">🧪 붉은 색소 물에 호스 한쪽을 넣고, 다른 쪽은 물 위에 두었어요</span>');
+  }
+  _pd(e){ ac(); this._down={x:e.clientX,y:e.clientY,t:performance.now()}; if(this.dragStart&&this.dragStart(e)){ this.dragging=true; this.controls.enabled=false; try{this.canvas.setPointerCapture(e.pointerId);}catch(_){} } }
+  _pm(e){ if(!this.dragging&&e.pointerType==='mouse'&&e.buttons===0&&this.hover) this.hover(e); }
+  _pu(e){ if(this.dragging){ this.dragging=false; this.controls.enabled=true; this.dragEnd&&this.dragEnd(e); } this._down=null; }
+  press(v){ if(v&&!this.held){ this.count++; SFX.squish(); this.hint.show=false; } this.held=v; this.onCount&&this.onCount(); }
+  setAuto(bpm){ this.auto=bpm; if(bpm) this.hint.show=false; }
+  setCompare(v){ this.cmp=v; for(const k in this.LB) this.LB[k].set(v?`${this.names[k][0]}<small>→ 우리 몸의 ${this.names[k][1]}</small>`:this.names[k][0]); }
+  reset(){ this.front=this.uWater; this.count=0; this.vol=0; this.s=0; this.updateLiquid(); this.onCount&&this.onCount(); }
+  updateLiquid(){ const f=clamp(this.front,0,1); this.liq.geometry.setDrawRange(0,Math.floor(f*this.SEG)*this.RAD*6); }
+  update(dt,T){
+    let tgt=this.held?1:0;
+    if(this.auto){ const p0=this.ph; this.ph+=dt*this.auto/60; tgt=(this.ph%1)<.42?1:0; if(Math.floor(this.ph)>Math.floor(p0)){ this.count++; SFX.squish(); this.onCount&&this.onCount(); } }
+    const s0=this.s; const k=tgt>this.s?16:7; this.s+=(tgt-this.s)*Math.min(1,dt*k); const ds=this.s-s0;
+    this.bulb.scale.set(1,1-.42*this.s,1-.42*this.s);
+    const K=.14; let adv=0, out=0;
+    if(ds<0){ if(this.front<this.uP1) adv=-ds*K; }
+    else if(ds>0){ if(this.front>=this.uP0){ adv=ds*K; } }
+    if(adv){ const room=1-this.front; const a=Math.min(adv,room); this.front+=a; out=adv-a; this.updateLiquid(); }
+    const moved=adv; this.flowV=lerp(this.flowV,moved/Math.max(dt,1e-4),Math.min(1,dt*10));
+    TEX.flow.offset.x-=moved*30;
+    if(out>0){ this.vol+=out*this.L*1300; this.dAcc+=out*900; this.onCount&&this.onCount(); }
+    // 물이 흘러나오기
+    const end=this.curve.getPointAt(1), tan=this.curve.getTangentAt(1);
+    while(this.dAcc>=1){ this.dAcc--; const d=this.drops.find(x=>!x.on); if(!d) break; d.on=true; d.p.copy(end).add(V3(rnd(-.002,.002),0,rnd(-.002,.002))); d.v.copy(tan).multiplyScalar(rnd(.35,.6)).add(V3(rnd(-.03,.03),0,rnd(-.03,.03))); }
+    const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=V3(); let n=0;
+    this.drops.forEach((d,i)=>{ if(d.on){ d.v.y-=9.8*dt; d.p.addScaledVector(d.v,dt); if(d.p.y<this.WY){ d.on=false; this.ripple(d.p); if(Math.random()<.18) SFX.drip(); } }
+      if(d.on){ sc.set(.0045,.0045+Math.min(.008,Math.abs(d.v.y)*.006),.0045); m4.compose(d.p,q,sc); } else m4.makeScale(0,0,0); this.dropM.setMatrixAt(i,m4); });
+    this.dropM.instanceMatrix.needsUpdate=true;
+    this.rings.forEach(r=>{ r.userData.t+=dt; const t=r.userData.t; r.visible=t<.9; if(r.visible){ r.scale.setScalar(.006+t*.05); r.material.opacity=.7*(1-t/.9); } });
+    this.water.scale.y=1+.006*Math.sin(T*3);
+  }
+  ripple(p){ const r=this.rings.reduce((a,b)=>a.userData.t>b.userData.t?a:b); r.userData.t=0; r.position.x=p.x; r.position.z=p.z; }
+  filled(){ return this.front>=.999; }
+}
+
+/* ==================================================================
+   페이지 연결
+================================================================== */
+const SCENES={}; const MAKERS={circ:()=>new CircScene(),pump:()=>new PumpScene()};
+const getScene=n=>SCENES[n]||(SCENES[n]=MAKERS[n]());
+let curPage=null, curEl=null;
+const INFO={
+  '심장':{look:'주먹만 한 크기의 근육 주머니예요. <b>가슴 중앙에서 왼쪽으로 약간</b> 치우쳐 있어요.',fn:'<b>펌프 작용</b>으로 혈액을 온몸으로 순환시켜요.',fact:'❤️ 심장은 쉬지 않고 1분에 약 70번 뛰어요. 운동하면 더 빨리 뛰어요.'},
+  '혈관':{look:'굵은 관부터 머리카락보다 가는 관까지, <b>온몸에 그물처럼</b> 퍼져 있어요.',fn:'혈액이 이동하는 <b>통로</b>예요.',fact:'🔴 빨간색은 심장에서 나가는 혈액이, 🔵 파란색은 심장으로 돌아오는 혈액이 지나는 혈관이에요.'}};
+function renderOrg(n){ const el=$('#orgInfo'); if(!el) return; if(!n){ el.innerHTML='<div class="sub">👆 3D 몸의 심장이나 혈관을 눌러 보세요!</div><div class="muted">생김새와 하는 일을 알려 줄게요. 심장을 누르면 가까이 다가가서 뛰는 모습을 볼 수 있어요.</div>'; return; }
+  const o=INFO[n]; el.innerHTML=`<h3 style="color:${n==='심장'?'#c0392b':'#1b47a8'}">${n}</h3><dl><dt>생김새</dt><dd>${o.look}</dd><dt>하는 일</dt><dd>${o.fn}</dd></dl><div class="fact">${o.fact}</div>`; }
+renderOrg(null);
+const RSTEPS=[['심장','심장이 펌프 작용으로 혈액을 밀어 내요.'],['혈관','혈액이 혈관을 따라 온몸으로 이동해요.'],['온몸','산소와 영양소를 온몸에 전해 줘요.'],['혈관','혈액이 혈관을 따라 다시 돌아와요.'],['심장','심장으로 돌아온 혈액이 또 밀려 나가요. (반복)']];
+$$('[data-route]').forEach(el=>el.innerHTML=RSTEPS.map((s,i)=>`<div class="r" data-rs="${i}"><div class="o" style="${i===1?'background:#ffd9dc;color:#a3161c':i===3?'background:#dbe5ff;color:#1b47a8':''}">${s[0]}</div><div class="t">${s[1]}</div></div>`).join(''));
+function curHTML(st){ if(st==null) return '<h3>❤️ 혈액 따라가기</h3><p>위에서 <b>머리로 · 팔로 · 다리로</b> 중 하나를 누르면 노란 동그라미가 붙은 혈액 하나를 따라가요.</p>';
+  const t=[['심장','심장이 힘차게 오므라들며 혈액을 밀어 내요.'],['혈관 (나가는 길)','혈액이 혈관을 따라 몸 구석구석으로 가요.'],['온몸','가는 혈관에서 산소와 영양소를 몸에 전해 줘요.'],['혈관 (돌아오는 길)','산소를 전해 준 혈액이 혈관을 따라 심장으로 돌아가요.'],['심장','심장으로 돌아왔어요. 다시 온몸으로 출발!']][st]; return `<h3>${t[0]}</h3><p>${t[1]}</p>`; }
+function bindCirc(sc,id){ sc.onSelect=renderOrg;
+  sc.onBeat=()=>{ if(!curEl) return; const h=curEl.querySelector('[data-hrt]'); if(h){ h.style.transform='scale(1.25)'; setTimeout(()=>h.style.transform='',140); } const b=curEl.querySelector('[data-beats]'); if(b) b.textContent=sc.beats; };
+  sc.onFollow=st=>{ if(!curEl) return; const c=curEl.querySelector('[data-cur]'); if(c) c.innerHTML=curHTML(st); $$('.route .r',curEl).forEach((r,i)=>r.classList.toggle('on',st!=null&&i===st)); };
+  sc.onChest=()=>{ if(sc.stopped) doPress(); };
+  if(curEl.querySelector('[data-cur]')) curEl.querySelector('[data-cur]').innerHTML=curHTML(null); }
+setInterval(()=>{ const sc=SCENES.circ; if(!sc||!curEl) return; const d=curEl.querySelector('[data-deliv]'); if(d) d.textContent=sc.deliv; const bp=curEl.querySelector('[data-bpm]'); if(bp) bp.textContent=sc.stopped?0:sc.bpm; if(curPage==='book-3') cprTick(sc); },150);
+
+/* 심폐 소생술 */
+let metro=null;
+function cprTick(sc){ if(sc.mode!=='cpr'||!$('#cprBox')||$('#cprBox').hidden) return; $('#o2bar').style.width=(sc.o2*100).toFixed(0)+'%';
+  const real=sc.stopped?sc.tStop*10:0; $('#cprTime').textContent=sc.stopped?(real<60?Math.round(real)+'초':Math.floor(real/60)+'분 '+Math.round(real%60)+'초'):'심장이 다시 뛰어요 ❤️';
+  const r=sc.rate(); $('#cprRate').textContent=r||'-'; const w=$('#cprWarn');
+  if(!sc.stopped){ w.style.color='#18a058'; w.textContent='🎉 심장이 다시 뛰어요! 혈액이 돌면서 뇌에 산소가 다시 전해져요.'; }
+  else if(r>=95&&r<=130){ w.style.color='#18a058'; w.textContent='👍 좋아요! 압박할 때마다 혈액이 밀려 나가 뇌에 산소가 전해져요.'; }
+  else if(r>130){ w.style.color='#c2410c'; w.textContent='조금 천천히! 1분에 100~120번 빠르기로 눌러요.'; }
+  else if(r>0){ w.style.color='#c2410c'; w.textContent='조금 더 빠르게! 1분에 100~120번 빠르기로 눌러요.'; }
+  else if(sc.o2<.4){ w.style.color='#e5484d'; w.textContent='⚠️ 뇌에 산소가 거의 없어요! 빨리 가슴 압박을 해야 해요.'; }
+  else { w.style.color='#e5484d'; w.textContent='💔 심장이 멈춰서 혈액이 돌지 않아요. 뇌에 산소가 전해지지 않아요.'; }
+  $('#cprAed').disabled=!(sc.stopped&&sc.presses>=15); }
+function doPress(){ const sc=getScene('circ'); if(!sc.stopped) return; sc.chest(); }
+$('#cprStop').onclick=()=>{ const sc=getScene('circ'); sc.setMode('cpr'); sc.stopHeart(); $('#cprBox').hidden=false; sc.setHud('<span class="chip big">💔 심장이 멈췄어요! 혈액이 돌지 않아요</span>'); SFX.no(); };
+$('#cprPress').addEventListener('pointerdown',e=>{ e.preventDefault(); ac(); doPress(); });
+$('#cprAed').onclick=()=>{ const sc=getScene('circ'); sc.restart(); sc.setHud('<span class="chip big">⚡ 자동심장충격기로 심장이 다시 뛰기 시작했어요!</span>'); setTimeout(()=>SFX.yay(),500); };
+$('#cprBeat').onclick=e=>{ const b=e.currentTarget, v=!b.classList.contains('on'); b.classList.toggle('on',v); clearInterval(metro); if(v) metro=setInterval(()=>tone(1500,.03,'square',.06),545); };
+
+/* 이름 붙이기 */
+let zones=null, picked=null;
+function setupLabel(sc){ if(!zones){ zones={}; for(const k of ['심장','혈관']){ const L=sc.addLabel({html:'?',cls:'zone',pos:sc.anchors[k],dx:k==='심장'?-170:sc.L[k].dx,dy:k==='심장'?-30:sc.L[k].dy}); L.el.dataset.n=k; zones[k]=L; L.el.addEventListener('click',()=>{ if(picked) tryDrop(picked,k); }); } }
+  for(const k in zones) zones[k].show=true; if(!$('#tray').children.length) buildTray(); }
+function hideZones(){ if(zones) for(const k in zones) zones[k].show=false; }
+function buildTray(){ const t=$('#tray'); t.innerHTML=''; ['심장','혈관','위','작은창자'].sort(()=>Math.random()-.5).forEach(n=>{ const c=document.createElement('div'); c.className='nchip'; c.textContent=n; c.dataset.n=n; t.appendChild(c); dragChip(c); }); $('#trayFb').textContent=''; }
+function dragChip(c){ let gh=null, sx=0, sy=0, moved=false;
+  c.addEventListener('pointerdown',e=>{ ac(); sx=e.clientX; sy=e.clientY; moved=false; try{ c.setPointerCapture(e.pointerId); }catch(_){}
+    c._mv=ev=>{ if(!moved&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>6){ moved=true; gh=c.cloneNode(true); gh.classList.add('ghost'); document.body.appendChild(gh); }
+      if(gh){ gh.style.left=ev.clientX+'px'; gh.style.top=ev.clientY+'px'; const z=zoneAt(ev.clientX,ev.clientY); for(const k in zones) zones[k].el.classList.toggle('hot',zones[k].el===z); } };
+    c.addEventListener('pointermove',c._mv); });
+  c.addEventListener('pointerup',e=>{ c.removeEventListener('pointermove',c._mv); if(gh){ gh.remove(); gh=null; const z=zoneAt(e.clientX,e.clientY); for(const k in zones) zones[k].el.classList.remove('hot'); if(z) tryDrop(c,z.dataset.n); }
+    else if(!moved){ $$('.nchip').forEach(x=>x.classList.toggle('pick',x===c&&!c.classList.contains('pick'))); picked=c.classList.contains('pick')?c:null; } });
+  c.addEventListener('pointercancel',()=>{ c.removeEventListener('pointermove',c._mv); if(gh){ gh.remove(); gh=null; } }); }
+function zoneAt(x,y){ return document.elementsFromPoint(x,y).find(e=>e.classList&&e.classList.contains('zone')&&!e.classList.contains('ok'))||null; }
+function tryDrop(c,k){ const Z=zones[k]; if(!Z||Z.el.classList.contains('ok')) return; picked=null; $$('.nchip').forEach(x=>x.classList.remove('pick'));
+  if(c.dataset.n===k){ Z.set(k); Z.el.classList.add('ok'); c.classList.add('used'); SFX.ok(); const sc=getScene('circ'); sc.highlight(k); setTimeout(()=>sc.highlight(null),900);
+    if(Object.values(zones).every(z=>z.el.classList.contains('ok'))){ const fb=$('#trayFb'); fb.className='fb ok'; fb.innerHTML='🎉 모두 맞혔어요! 순환기관에는 심장과 혈관이 있어요. <button class="btn" style="padding:6px 10px;font-size:14px" id="trayAgain">다시 하기</button>'; SFX.yay(); $('#trayAgain').onclick=()=>{ for(const n in zones){ zones[n].set('?'); zones[n].el.classList.remove('ok'); } buildTray(); }; } }
+  else { Z.el.classList.add('bad'); setTimeout(()=>Z.el.classList.remove('bad'),400); SFX.no(); const fb=$('#trayFb'); fb.className='fb no'; fb.textContent=['위','작은창자'].includes(c.dataset.n)?`‘${c.dataset.n}’는 소화기관이에요. 순환기관을 찾아봐요!`:`앗, 그곳은 ‘${c.dataset.n}’가 아니에요. 다시 해 봐요!`; } }
+
+/* 펌프 */
+function bindPump(sc){ sc.onCount=()=>{ $('#pCount').textContent=sc.count; $('#pVol').textContent=Math.round(sc.vol)+' mL'; }; sc.onCount(); }
+const pb=$('#pumpBtn');
+pb.addEventListener('pointerdown',e=>{ e.preventDefault(); ac(); try{ pb.setPointerCapture(e.pointerId); }catch(_){} pb.classList.add('down'); getScene('pump').press(true); });
+const pbUp=()=>{ if(!pb.classList.contains('down')) return; pb.classList.remove('down'); getScene('pump').press(false); }; pb.addEventListener('pointerup',pbUp); pb.addEventListener('pointercancel',pbUp); pb.addEventListener('pointerleave',pbUp);
+$$('#autoSeg button').forEach(b=>b.onclick=()=>{ $$('#autoSeg button').forEach(x=>x.classList.toggle('on',x===b)); getScene('pump').setAuto(+b.dataset.v); SFX.tick(); });
+$('#cmpBtn').onclick=e=>{ const b=e.currentTarget, v=!b.classList.contains('on'); b.classList.toggle('on',v); getScene('pump').setCompare(v); SFX.tick(); };
+$('#tblCheck').onclick=()=>{ let ok=0,blank=0; const L=$$('[data-tbl]'); L.forEach(ch=>{ const s=ch.querySelector('.sel'); ch.classList.remove('right','wrong'); if(!s){ blank++; return; } const r=s.textContent===ch.dataset.tbl; ch.classList.add(r?'right':'wrong'); if(r) ok++; });
+  const fb=$('#tblFb'); if(blank){ fb.className='fb no'; fb.textContent=`아직 고르지 않은 칸이 ${blank}개 있어요.`; SFX.no(); return; }
+  if(ok===3){ fb.className='fb ok'; fb.textContent='🎉 정답! 펌프는 심장, 호스는 혈관, 붉은 색소 물은 혈액과 같은 역할을 해요.'; SFX.yay(); const b=$('#cmpBtn'); if(!b.classList.contains('on')) b.click(); }
+  else { fb.className='fb no'; fb.textContent=`${ok}/3개 정답! 무엇이 무엇을 밀어 보내고, 무엇이 지나가는 길인지 생각해 봐요.`; SFX.no(); } };
+
+function showPage(id,push=true){
+  const page=$(`.page[data-id="${id}"]`); if(!page) return; const view=id.split('-')[0];
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.view===view));
+  $$('.view').forEach(v=>v.classList.toggle('on',v.dataset.view===view));
+  $$('.step').forEach(s=>s.classList.toggle('on',s.dataset.go===id));
+  $$('.page').forEach(p=>p.classList.toggle('on',p===page));
+  curPage=id; curEl=page;
+  const stEl=page.querySelector('.stage'); const sn=stEl.dataset.scene;
+  for(const k in SCENES) if(k!==sn) SCENES[k].stop();
+  clearInterval(metro); const mb=$('#cprBeat'); if(mb) mb.classList.remove('on');
+  let sc; try{ sc=getScene(sn); }catch(err){ stEl.innerHTML='<div class="boot">3D 화면을 열 수 없어요 😢 (WebGL 지원 브라우저가 필요해요)</div>'; console.error(err); return; }
+  sc.mount(stEl);
+  if(sn==='circ'){ bindCirc(sc,id); hideZones(); const mode={'book-1':'explore','book-2':'sim','book-3':'cpr','lab-1':'label','lab-3':'sim'}[id]; sc.setMode(mode);
+    if(mode==='label') setupLabel(sc); if(id==='book-3'){ $('#cprBox').hidden=true; } if(id==='lab-3') sc.follow('arm');
+    $$('[data-act] button',page).forEach(b=>b.classList.toggle('on',b.dataset.a===(sc.bpm>100?'run':'rest'))); }
+  if(sn==='pump') bindPump(sc);
+  if(push){ try{ history.replaceState(null,'','#'+id); }catch(_){ } }
+  window.scrollTo({top:0});
+}
+window.addEventListener('hashchange',()=>{ const h=location.hash.slice(1); if(h&&h!==curPage) showPage(h,false); });
+
+/* ---------- 이벤트 ---------- */
+document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g){ SFX.tick(); showPage(g.dataset.go); } });
+$$('.tab').forEach(t=>t.onclick=()=>{ SFX.tick(); showPage(t.dataset.view==='book'?'book-1':'lab-1'); });
+$('#soundBtn').onclick=e=>{ soundOn=!soundOn; e.currentTarget.textContent=soundOn?'🔊':'🔇'; };
+$('#fsBtn').onclick=()=>{ try{ if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); else document.exitFullscreen().catch(()=>{}); }catch(_){} };
+$$('.tg[data-t]').forEach(b=>b.onclick=()=>{ const v=!b.classList.contains('on'); b.classList.toggle('on',v); getScene('circ').setOpt(b.dataset.t,v); SFX.tick(); });
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-act] button'); if(!b) return; $$('button',b.parentElement).forEach(x=>x.classList.toggle('on',x===b)); getScene('circ').setActivity(b.dataset.a); SFX.tick();
+  getScene('circ').toast(b.dataset.a==='run'?'🏃 운동하면 몸에 산소가 더 많이 필요해서 심장이 더 빨리 뛰어요!':'🧘 쉴 때는 심장이 천천히 뛰어요.',2600); });
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-follow]'); if(!b) return; const k=b.dataset.follow; getScene('circ').follow(k==='off'?null:k); SFX.tick(); });
+document.addEventListener('click',e=>{ const c=e.target.closest('.cover'); if(c&&!c.classList.contains('open')){ c.classList.add('open'); SFX.pop(); } });
+document.addEventListener('click',e=>{ const b=e.target.closest('.ch button'); if(!b) return; const ch=b.parentElement; $$('button',ch).forEach(x=>x.classList.toggle('sel',x===b)); ch.classList.remove('right','wrong'); SFX.tick(); const qid=ch.dataset.quiz; if(!qid) return;
+  const ok=b.textContent===ch.dataset.ans; ch.classList.add(ok?'right':'wrong'); ok?SFX.ok():SFX.no();
+  if(qid==='hy'){ const fb=$('[data-fb=hy]'); fb.className='fb '+(ok?'ok':'no'); fb.textContent=ok?'⭕ 정답! 순환기관(심장과 혈관)은 혈액이 온몸을 돌게 해요.':'❌ 다시 생각해 봐요. 초성 힌트: ㅎㅇ'; if(ok){ $('#bk1').textContent='혈'; $('#bk2').textContent='액'; } }
+  const grp=(pre,fbk,msg)=>{ if(!qid.startsWith(pre)) return; const all=$$(`[data-quiz^=${pre}]`).every(c=>c.classList.contains('right')); const fb=$(`[data-fb=${fbk}]`); fb.className='fb '+(all?'ok':''); fb.textContent=all?msg:''; };
+  grp('f','fn','🎉 심장과 혈관의 기능을 모두 맞혔어요!'); grp('o','obs','🎉 펌프가 물을 밀어 보내면 물이 호스를 따라 계속 돌아요. 우리 몸의 혈액도 이렇게 돌아요!'); grp('s','sum','🎉 정답! 심장의 펌프 작용으로 혈액이 혈관을 통해 온몸을 순환합니다.'); });
+$$('.faces').forEach(f=>$$('button',f).forEach(b=>b.onclick=()=>{ $$('button',f).forEach(x=>x.classList.toggle('on',x===b)); SFX.pop(); }));
+
+/* ---------- 시작 ---------- */
+try{ initTextures(); }catch(err){ console.error(err); }
+const startId=(location.hash||'').slice(1);
+showPage($(`.page[data-id="${startId}"]`)?startId:'book-1',false);
+window.__S=SCENES;
+</script>
+<script>
+setTimeout(function(){ if(!window.__S){ document.querySelectorAll('.stage').forEach(function(s){ s.innerHTML='<div class="boot">3D 화면을 불러오지 못했어요.<br>인터넷 연결을 확인하고 새로고침해 주세요.</div>'; }); } },9000);
+</script>
+</body>
+</html>
