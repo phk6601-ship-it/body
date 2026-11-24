@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>숨을 쉴 때 어떤 일이 일어날까? — 호흡기관 3D 실험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --book:#6b3fb4; --book-d:#4e2a8c; --book-l:#f1eafc;
+  --lab:#0b8f80; --lab-d:#076b60; --lab-l:#e2f5f1;
+  --ink:#2a2433; --muted:#6c6579; --line:#e7e2ed; --bg:#f6f4f0;
+  --yellow:#ffcf2e; --ok:#18a058; --no:#e5484d; --org:#c2410c;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:'Noto Sans KR',system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button{font-family:inherit}
+.top{display:flex;align-items:center;gap:14px;padding:10px 18px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.unit{display:flex;align-items:center;gap:12px;min-width:0}
+.unit .num{font-family:'Jua',sans-serif;font-size:40px;line-height:1;color:#fff;background:linear-gradient(160deg,#8a5fd0,var(--book));width:50px;height:56px;display:grid;place-items:center;border-radius:14px 14px 14px 4px;flex:none;box-shadow:0 4px 0 var(--book-d)}
+.unit h1{font-family:'Jua',sans-serif;font-weight:400;font-size:27px;margin:0;line-height:1.1;white-space:nowrap}
+.unit small{display:block;color:var(--muted);font-size:13px;font-weight:500;margin-top:3px}
+.toc{display:inline-flex;align-items:center;gap:4px;text-decoration:none;color:var(--book);font-weight:900;font-size:14px;border:2px solid var(--book-l);background:#fff;border-radius:12px;padding:8px 12px;flex:none}
+.tabs{margin-left:auto;display:flex;gap:6px;background:#f2eff6;padding:5px;border-radius:18px}
+.tab{border:0;border-radius:14px;padding:9px 18px;font-weight:900;font-size:17px;cursor:pointer;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;transition:.2s}
+.tab .pg{font-weight:500;font-size:12px;opacity:.85}
+.tab[data-view=book].on{background:var(--book);color:#fff;box-shadow:0 4px 14px rgba(107,63,180,.35)}
+.tab[data-view=lab].on{background:var(--lab);color:#fff;box-shadow:0 4px 14px rgba(11,143,128,.35)}
+.icobtn{border:1px solid var(--line);background:#fff;border-radius:12px;width:42px;height:42px;font-size:19px;cursor:pointer;flex:none}
+.view{display:none}.view.on{display:block}
+.steps{display:flex;gap:8px;padding:12px 18px 0;flex-wrap:wrap;align-items:center}
+.steps .who{font-family:'Jua';font-size:20px;margin-right:6px}
+.view[data-view=book] .who{color:var(--book)}.view[data-view=lab] .who{color:var(--lab)}
+.step{border:2px solid var(--line);background:#fff;border-radius:999px;padding:7px 15px;font-weight:700;font-size:15px;cursor:pointer;color:var(--muted);transition:.15s}
+.view[data-view=book] .step.on{border-color:var(--book);color:#fff;background:var(--book)}
+.view[data-view=lab] .step.on{border-color:var(--lab);color:#fff;background:var(--lab)}
+.page{display:none;grid-template-columns:minmax(0,1fr) 390px;gap:16px;padding:12px 18px 18px;height:calc(100vh - 134px);min-height:600px}
+.page.on{display:grid}
+.stage{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--line);min-height:400px;background:radial-gradient(ellipse at 50% 38%,#ffffff 0%,#f6f1ea 55%,#e9e1d6 100%)}
+.stage-root{position:absolute;inset:0}
+.stage-root canvas{display:block;width:100%!important;height:100%!important;touch-action:none;outline:none}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.labels svg{position:absolute;inset:0;width:100%;height:100%}
+.labels line{stroke:#c2410c;stroke-width:1.6}
+.lbl{position:absolute;transform:translate(-50%,-50%);background:rgba(255,255,255,.96);border:2px solid #e98a5a;color:#9a3412;border-radius:999px;padding:4px 12px;font-weight:900;font-size:15px;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.12);text-align:center;line-height:1.3}
+.lbl small{display:block;font-size:12.5px;font-weight:700;color:#5b4a3f;white-space:normal}
+.lbl.sel{background:#ffcf2e;border-color:#b8860b;color:#4a3500}
+.lbl.cur{border-radius:16px;max-width:280px;white-space:normal;padding:8px 14px;font-size:18px;border-width:3px}
+.lbl.say{border-radius:16px;border-color:#8a5a2b;color:#5a3a1a;font-size:16px;padding:8px 14px}
+.lbl.zone{pointer-events:auto;cursor:pointer;border-style:dashed;border-color:#9c8f84;color:#9c8f84;min-width:84px;background:rgba(255,255,255,.9)}
+.lbl.zone.hot{border-color:var(--lab);background:var(--lab-l);color:var(--lab)}
+.lbl.zone.ok{border-style:solid;border-color:var(--ok);color:#0f6b3b;background:#eafaf0}
+.lbl.zone.bad{animation:shake .4s}
+.lbl.zone.fixed{border-style:solid;border-color:#d6cfc6;color:#8b7f74}
+.ldot{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#e98a5a;border:2px solid #fff}
+.ldot.cur,.ldot.say{display:none!important}
+@keyframes shake{0%,100%{margin-left:0}25%{margin-left:-8px}75%{margin-left:8px}}
+.hud{position:absolute;left:14px;top:12px;right:80px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.chip{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-weight:700;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.chip.big{font-size:17px;padding:8px 16px;background:#2a2433;color:#fff;border:0}
+.stage-tools{position:absolute;right:12px;bottom:12px;display:flex;gap:8px;z-index:3}
+.stage-tools button{border:1px solid var(--line);background:rgba(255,255,255,.95);border-radius:12px;padding:8px 12px;font-weight:700;font-size:13px;cursor:pointer;color:var(--muted)}
+.stage-tools button.on{background:#2a2433;color:#fff;border-color:#2a2433}
+.toast{position:absolute;left:50%;bottom:24px;transform:translate(-50%,20px);background:#2a2433;color:#fff;padding:12px 20px;border-radius:16px;font-weight:700;font-size:17px;opacity:0;transition:.35s;pointer-events:none;z-index:4;text-align:center;max-width:90%}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.mouth2d{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none}
+.boot{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-weight:700;font-size:16px;text-align:center;padding:20px}
+/* 소화 과정 막대 */
+.stick{position:absolute;right:20px;top:60px;bottom:64px;width:54px;z-index:3;touch-action:none;cursor:grab}
+.stick .bar{position:absolute;left:12px;right:12px;top:0;bottom:0;border-radius:10px;background:linear-gradient(90deg,#1e66d6,#3b8cff 45%,#1e66d6);box-shadow:inset 0 0 0 2px rgba(0,0,0,.15),0 4px 12px rgba(30,102,214,.35)}
+.stick .fill{position:absolute;left:12px;right:12px;top:0;border-radius:10px;background:rgba(255,255,255,.35)}
+.stick .grip{position:absolute;left:0;right:0;height:46px;margin-top:-23px;border-radius:14px;background:#fff;border:3px solid #1e66d6;display:grid;place-items:center;font-size:22px;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+.stick .tk{position:absolute;right:62px;transform:translateY(-50%);font-weight:900;font-size:13px;color:#1b4fa8;background:rgba(255,255,255,.9);border-radius:999px;padding:2px 9px;white-space:nowrap;pointer-events:none;transition:.2s}
+.stick .tk.on{background:#1e66d6;color:#fff;transform:translateY(-50%) scale(1.12)}
+.stick .cap{position:absolute;top:-34px;right:-6px;font-weight:900;font-size:12.5px;color:#1b4fa8;white-space:nowrap}
+/* panel */
+.panel{overflow:auto;display:flex;flex-direction:column;gap:12px;padding:0 4px 8px 0;scrollbar-width:thin}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:15px 16px;flex:none}
+.kicker{display:flex;align-items:center;gap:8px;font-family:'Jua';font-size:23px;margin-bottom:8px;line-height:1.2}
+.pgtag{font-family:'Noto Sans KR';font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;color:#fff;flex:none}
+.view[data-view=book] .pgtag{background:var(--book)}.view[data-view=lab] .pgtag{background:var(--lab)}
+.view[data-view=book] .card.intro{border-left:6px solid var(--book)}
+.view[data-view=lab] .card.intro{border-left:6px solid var(--lab)}
+.lead{margin:0;font-size:16px;line-height:1.75}
+.lead b{color:var(--book-d)}
+.view[data-view=lab] .lead b{color:var(--lab-d)}
+.gloss{margin-top:10px;background:#fff7d6;border-radius:12px;padding:8px 12px;font-size:14px;font-weight:500;line-height:1.6}
+.gloss b{color:#c2410c}
+.sub{font-weight:900;font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:6px;line-height:1.45}
+.muted{color:var(--muted);font-size:14px;line-height:1.6}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:0;border-radius:14px;padding:11px 14px;font-weight:900;font-size:16px;cursor:pointer;background:#f1eef5;color:var(--ink);flex:1 1 auto;transition:transform .1s, background .2s}
+.btn:active{transform:scale(.96)}
+.btn.hot{background:var(--yellow);color:#4a3500}
+.btn.main{color:#fff}
+.view[data-view=book] .btn.main{background:var(--book)}.view[data-view=lab] .btn.main{background:var(--lab)}
+.btn.eat{background:linear-gradient(135deg,#ff8a3d,#ff5e62);color:#fff;font-size:19px;padding:14px;box-shadow:0 5px 0 #c4402f}
+.btn:disabled{opacity:.4;cursor:default}
+.tg{border:2px solid var(--line);background:#fff;border-radius:12px;padding:8px 10px;font-weight:700;font-size:14px;cursor:pointer;color:var(--muted);flex:1 1 auto}
+.tg.on{border-color:#2a2433;color:#2a2433;background:#fffbe8}
+.foods{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.foods button{border:2px solid var(--line);background:#fff;border-radius:14px;padding:8px 2px;cursor:pointer;font-weight:900;font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
+.foods button span{font-size:28px;line-height:1}
+.foods button.on{border-color:#ff7a3d;background:#fff3ea;color:#c2410c}
+.speed{display:flex;gap:6px;margin-top:8px}
+.speed button{flex:1;border:2px solid var(--line);background:#fff;border-radius:10px;padding:7px;font-weight:900;cursor:pointer;color:var(--muted)}
+.speed button.on{border-color:#2a2433;color:#2a2433}
+/* 경로 타임라인 */
+.route{display:flex;flex-direction:column;gap:0;position:relative;padding-left:4px}
+.route .r{display:grid;grid-template-columns:62px 1fr;gap:10px;align-items:center;padding:6px 6px;border-radius:14px;cursor:pointer;transition:.2s;position:relative}
+.route .r .o{width:58px;height:40px;border-radius:999px;display:grid;place-items:center;font-weight:900;font-size:14px;background:#fde3d4;color:#9a3412;line-height:1.1;text-align:center}
+.route .r .t{font-size:13.5px;line-height:1.5;color:var(--muted)}
+.route .r.on{background:#fff3ea}
+.route .r.on .o{background:#ff7a3d;color:#fff;box-shadow:0 0 0 4px rgba(255,122,61,.25)}
+.route .r.on .t{color:var(--ink);font-weight:700}
+.route .r.done .o{background:#ffd5bd}
+.route .r:not(:last-child)::after{content:'';position:absolute;left:35px;bottom:-5px;width:2px;height:10px;background:#d6c8bd}
+.meters{display:grid;gap:9px}
+.mt{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-weight:900;font-size:14px}
+.mt .bar{grid-column:1/-1;height:12px;border-radius:99px;background:#f0edf3;overflow:hidden}
+.mt .bar i{display:block;height:100%;border-radius:99px;transition:width .15s}
+.clock{display:flex;align-items:center;gap:10px;background:#f3f6ff;border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.5}
+.clock b{font-size:17px;color:#1b4fa8}
+.orgcard{border:3px solid #ff7a3d;background:#fffaf5}
+.orgcard h3{margin:0 0 4px;font-family:'Jua';font-weight:400;font-size:28px;color:#c2410c}
+.orgcard p{margin:0;font-size:16px;line-height:1.65}
+.info h3{margin:0 0 6px;font-family:'Jua';font-weight:400;font-size:26px;color:#c2410c}
+.info dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:15.5px;line-height:1.6}
+.info dt{font-weight:900;color:var(--muted)}.info dd{margin:0}
+.info .fact{margin-top:10px;background:#eef7ff;border-radius:12px;padding:8px 12px;font-size:14px;line-height:1.5}
+.poopcard{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:center}
+.poopcard img{width:96px}
+/* cover */
+.cover{position:relative;border-radius:14px;overflow:hidden;cursor:pointer;min-height:48px}
+.cover .ans{padding:10px 12px;background:#f3fbf6;border:2px solid #bfe6cd;border-radius:14px;font-size:15.5px;line-height:1.6}
+.cover .lid{position:absolute;inset:0;border-radius:14px;display:grid;place-items:center;font-weight:900;font-size:15px;color:#4a3500;background:repeating-linear-gradient(45deg,#ffd84d 0 14px,#ffcb1f 14px 28px);transition:transform .45s cubic-bezier(.6,-0.2,.4,1.2),opacity .45s}
+.cover.open .lid{transform:translateY(-110%);opacity:0}
+.q{font-size:16px;line-height:2.2;margin:4px 0}
+.ch{display:inline-flex;gap:4px;vertical-align:middle;background:#f4f1f8;border-radius:12px;padding:3px;margin:0 2px;flex-wrap:wrap}
+.ch button{border:0;background:transparent;border-radius:9px;padding:4px 10px;font-weight:900;font-size:15px;cursor:pointer;color:#6c6579}
+.ch button.sel{background:#2a2433;color:#fff}
+.ch.right button.sel{background:var(--ok)}.ch.wrong button.sel{background:var(--no)}
+.fb{font-weight:900;font-size:15px;margin-top:6px;min-height:22px;line-height:1.5}
+.fb.ok{color:var(--ok)}.fb.no{color:var(--no)}
+.blank{display:inline-flex;gap:4px;vertical-align:middle}
+.blank span{display:inline-grid;place-items:center;width:34px;height:34px;border:2px solid #2a2433;border-radius:6px;font-weight:900;font-size:17px;background:#fff}
+/* 이름 칩 */
+.tray{display:flex;flex-wrap:wrap;gap:8px}
+.nchip{border:2px solid #e98a5a;background:#fff;color:#9a3412;border-radius:999px;padding:9px 16px;font-weight:900;font-size:16px;cursor:grab;touch-action:none;user-select:none}
+.nchip.pick{background:#ffcf2e;border-color:#b8860b;color:#4a3500}
+.nchip.used{opacity:.25;pointer-events:none}
+.ghost{position:fixed;z-index:99;pointer-events:none;transform:translate(-50%,-50%) scale(1.1);box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.fcard{border:2px solid var(--line);border-radius:16px;padding:10px 12px}
+.fcard .h{font-weight:900;font-size:15px;color:#c2410c;margin-bottom:2px}
+.fcard textarea{min-height:56px}
+textarea{width:100%;min-height:80px;border:2px solid var(--line);border-radius:14px;padding:10px 12px;font:500 15px/1.6 'Noto Sans KR';resize:vertical}
+textarea:focus{outline:none;border-color:var(--lab)}
+/* 정리 경로 */
+.path{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:900;font-size:16px}
+.slot{min-width:78px;height:42px;border:2px dashed #b9b2c4;border-radius:12px;display:grid;place-items:center;padding:0 8px;cursor:pointer;background:#fff;color:#2a2433}
+.slot.fill{border-style:solid;border-color:#e98a5a;background:#fff3ea}
+.slot.right{border-color:var(--ok);background:#eafaf0}.slot.wrong{border-color:var(--no);background:#fff0f0}
+.self{display:grid;gap:8px}
+.self .r{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;font-size:14px;line-height:1.5;padding:8px 10px;border-radius:12px;background:#fafafa}
+.self .r .tag{font-size:11.5px;font-weight:900;padding:2px 7px;border-radius:999px;color:#fff;margin-right:4px}
+.faces{display:flex;gap:4px}.faces button{border:2px solid transparent;background:#fff;border-radius:10px;font-size:22px;width:40px;height:40px;cursor:pointer;filter:grayscale(1);opacity:.6}
+.faces button.on{filter:none;opacity:1;border-color:var(--lab)}
+.safety{background:#fff4f2;border:1px solid #ffd2c9;border-radius:14px;padding:8px 12px;font-size:13.5px;line-height:1.5}
+.helper{background:#f2f8ff;border:1px solid #d4e6ff;border-radius:14px;padding:8px 12px;font-size:13.5px;line-height:1.5}
+.stat2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center}
+.stat2 div{background:#fafafa;border-radius:12px;padding:8px 4px;font-size:12.5px;color:var(--muted);font-weight:700}
+.stat2 b{display:block;font-size:22px;color:var(--ink)}
+@media (max-width: 1000px){
+  .page{grid-template-columns:1fr;height:auto;min-height:0}
+  .stage{height:60vh}
+  .unit h1{font-size:21px}.unit small{display:none}
+  .tab{padding:8px 12px;font-size:15px}
+}
+@media (max-width: 640px){ .unit .num{display:none} .tab .pg{display:none} .toc span{display:none} }
+
+/* ---- 4차시 추가 ---- */
+[hidden]{display:none!important}
+.stage{background:radial-gradient(ellipse at 50% 38%,#ffffff 0%,#f1f0f6 55%,#e3e1ec 100%)}
+.stage.desk{background:radial-gradient(ellipse at 50% 30%,#ffffff 0%,#f3efe8 60%,#e6ded2 100%)}
+.lbl{border-color:#8a6fd1;color:#4d3299}
+.labels line{stroke:#7b61c9}
+.ldot{background:#8a6fd1}
+.lbl.hint{background:#ffcf2e;border-color:#b8860b;color:#4a3500;animation:bob 1s ease-in-out infinite;border-radius:14px}
+.ldot.hint{display:none!important}
+.lbl.stk{background:#fff;border:2px dashed #9c8f84;color:#9c8f84;pointer-events:auto;cursor:pointer;min-width:74px}
+.lbl.stk.hot{border-color:var(--lab);color:var(--lab);background:var(--lab-l)}
+.lbl.stk.ok{border-style:solid;border-color:var(--ok);color:#0f6b3b;background:#eafaf0}
+.lbl.stk.bad{animation:shake .4s}
+@keyframes bob{0%,100%{margin-top:0}50%{margin-top:-6px}}
+.ldot.stk{display:none!important}
+.big2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.big2 div{background:#fafafa;border-radius:14px;padding:10px;text-align:center;font-size:13px;color:var(--muted);font-weight:700}
+.big2 b{display:block;font-size:24px;color:var(--ink);font-family:'Jua';font-weight:400}
+.seg2{display:flex;background:#f2eff6;border-radius:14px;padding:4px;gap:4px}
+.seg2 button{flex:1;border:0;background:transparent;border-radius:11px;padding:10px 6px;font-weight:900;font-size:15px;color:var(--muted);cursor:pointer}
+.seg2 button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.hold{border:0;border-radius:16px;padding:16px 10px;font-weight:900;font-size:18px;cursor:pointer;color:#fff;touch-action:none;user-select:none;-webkit-user-select:none;flex:1}
+.hold.in{background:linear-gradient(135deg,#6aa8ff,#3b6fe0);box-shadow:0 5px 0 #2a4fa8}
+.hold.blow{background:linear-gradient(135deg,#8be0ff,#2c9fd6);box-shadow:0 5px 0 #1d6f96;width:100%}
+.hold.down{transform:translateY(4px);box-shadow:0 1px 0 #2a4fa8}
+.meter{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-weight:900;font-size:14px;margin-top:8px}
+.meter .bar{grid-column:1/-1;height:12px;border-radius:99px;background:#f0edf3;overflow:hidden}
+.meter .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#7cc8ff,#3b6fe0);transition:width .1s}
+.phase{font-family:'Jua';font-size:26px;text-align:center;padding:6px;border-radius:14px;background:#f4f1fb;color:#4d3299}
+.phase.in{background:#e6f1ff;color:#1b55c0}.phase.out{background:#f3ecf8;color:#6b4596}
+.stepl{display:flex;flex-direction:column;gap:6px}
+.stepl .a{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;padding:9px 10px;border-radius:14px;border:2px solid var(--line);font-size:14px;line-height:1.5;transition:.2s}
+.stepl .a .n{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:900;background:#eee;color:#888;font-size:13px}
+.stepl .a.now{border-color:var(--lab);background:var(--lab-l)}
+.stepl .a.now .n{background:var(--lab);color:#fff}
+.stepl .a.done{opacity:.6}.stepl .a.done .n{background:var(--ok);color:#fff}
+.stepl .grp{font-weight:900;font-size:14px;color:var(--lab-d);margin-top:4px}
+table.pth{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:14px}
+table.pth th,table.pth td{padding:8px 6px;border-top:1px solid var(--line)}
+table.pth th{background:#f4f1fb;font-weight:900;width:92px;text-align:center}
+table.pth td{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-weight:900}
+.slot{min-width:70px;height:38px;border:2px dashed #b9b2c4;border-radius:10px;display:inline-grid;place-items:center;padding:0 6px;cursor:pointer;background:#fff;font-size:14px}
+.slot.fill{border-style:solid;border-color:#8a6fd1;background:#f4f1fb}
+.slot.right{border-color:var(--ok);background:#eafaf0}.slot.wrong{border-color:var(--no);background:#fff0f0}
+.slot.act{box-shadow:0 0 0 3px rgba(138,111,209,.35)}
+.nchip{-webkit-user-select:none;user-select:none}
+.stkbar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.95);border:2px solid #ffcf2e;border-radius:18px;padding:8px 12px;z-index:4;box-shadow:0 6px 18px rgba(0,0,0,.15);max-width:92%;flex-wrap:wrap;justify-content:center}
+.stkbar b{font-size:13px;color:#7a5a00;margin-right:4px}
+.stkbar .nchip{background:#fffdf7}
+.head2d{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<header class="top">
+  <a class="toc" href="../">📚<span> 목차</span></a>
+  <div class="unit">
+    <div class="num">4</div>
+    <div><h1>숨을 쉴 때 어떤 일이 일어날까?</h1><small>4. 우리 몸의 구조와 기능 · 호흡기관</small></div>
+  </div>
+  <nav class="tabs">
+    <button class="tab on" data-view="book">📘 과학 교과서<span class="pg">96~97쪽</span></button>
+    <button class="tab" data-view="lab">📗 실험관찰<span class="pg">58~59쪽</span></button>
+  </nav>
+  <button class="icobtn" id="soundBtn" title="소리 켜기/끄기">🔊</button>
+  <button class="icobtn" id="fsBtn" title="전체 화면">⛶</button>
+</header>
+
+<!-- =================== 교과서 =================== -->
+<section class="view on" data-view="book">
+  <div class="steps">
+    <span class="who">📘 교과서</span>
+    <button class="step on" data-go="book-1">① 호흡과 호흡기관 <small>96~97쪽</small></button>
+    <button class="step" data-go="book-2">② 공기의 여행 🌬️ <small>97쪽</small></button>
+    <button class="step" data-go="book-3">③ 한눈에 쏙 · 생각+ <small>97쪽</small></button>
+  </div>
+
+  <div class="page on" data-id="book-1">
+    <div class="stage" data-scene="lung"><div class="boot">3D 호흡기관 준비 중…</div></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">🫁 호흡과 호흡기관 <span class="pgtag">96쪽</span></div>
+        <p class="lead">숨을 들이마시고 내쉬는 활동을 <b>호흡</b>이라고 하며, 이를 담당하는 기관을 <b>호흡기관</b>이라고 해요.</p>
+        <div class="gloss">호흡기관에는 <b>코, 숨관, 숨관가지, 폐</b> 등이 있어요.</div>
+      </div>
+      <div class="card">
+        <div class="row">
+          <button class="tg on" data-t="labels">🏷️ 이름표</button>
+          <button class="tg on" data-t="body">🧍 몸 보이기</button>
+          <button class="tg on" data-t="inside">🔍 폐 속 보기</button>
+        </div>
+      </div>
+      <div class="card info" id="orgInfo"></div>
+      <div class="card">
+        <div class="sub">🏊 수영할 때 얼굴을 물 위로 내미는 까닭은 무엇일까요?</div>
+        <div class="cover"><div class="ans">물속에서는 <b>숨을 쉴 수 없기</b> 때문이에요. 얼굴을 물 위로 내밀어 <b>코와 입으로 공기를 들이마셔야</b> 우리 몸에 필요한 산소를 얻을 수 있어요.</div><div class="lid">👆 눌러서 정답 보기</div></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="page" data-id="book-2">
+    <div class="stage" data-scene="lung"></div>
+    <aside class="panel">
+      <div class="card">
+        <div class="phase" data-phase>🌬️ 숨을 쉬어 볼까요?</div>
+        <div class="seg2" style="margin-top:10px" data-bmode><button class="on" data-m="auto">🔁 저절로 숨쉬기</button><button data-m="hand">✋ 내가 숨쉬기</button></div>
+        <div class="row" style="margin-top:8px" data-handrow hidden>
+          <button class="hold in" data-hold="in">😤 꾹 눌러 들이마시기</button>
+        </div>
+        <div class="muted" data-handtip hidden style="margin-top:6px">누르고 있으면 들이마시고, 손을 떼면 내쉬어요.</div>
+        <div class="seg2" style="margin-top:8px" data-act><button class="on" data-a="rest">🧘 쉴 때</button><button data-a="run">🏃 운동할 때</button></div>
+      </div>
+      <div class="card"><div class="big2"><div>몸속으로 들어온 산소<b data-o2>0</b></div><div>몸 밖으로 나간 이산화 탄소<b data-co2>0</b></div></div>
+        <div class="muted" style="margin-top:8px">🔵 <b>산소</b>는 폐에서 혈액으로 들어가고, 🟣 <b>이산화 탄소</b>는 몸 밖으로 나가요.</div></div>
+      <div class="card orgcard" data-cur></div>
+      <div class="card"><div class="sub">🗺️ 공기가 이동하는 길</div>
+        <div class="muted" style="line-height:1.9"><b style="color:#1b55c0">들이마실 때</b> 코 → 숨관 → 숨관가지 → 폐<br><b style="color:#6b4596">내쉴 때</b> 폐 → 숨관가지 → 숨관 → 코</div>
+        <div class="gloss" style="margin-top:8px"><b>산소</b>는 우리가 몸을 움직이거나 몸속 기관이 일하는 데 사용돼요. 몸속에서 생긴 <b>이산화 탄소</b>는 숨을 내쉴 때 몸 밖으로 나가요.</div></div>
+    </aside>
+  </div>
+
+  <div class="page" data-id="book-3">
+    <div class="stage desk" data-scene="head"></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">✅ 한눈에 쏙 <span class="pgtag">97쪽</span></div>
+        <div class="q">1. 숨을 <span class="ch" data-quiz="q1" data-ans="들이마시면"><button>들이마시면</button><button>내쉬면</button></span> 공기가 코, 숨관, 숨관가지를 거쳐 폐로 들어갑니다.</div>
+        <div class="fb" data-fb="q1"></div>
+      </div>
+      <div class="card">
+        <div class="sub">💭 생각+ 2. 입으로도 숨을 쉴 수 있는 까닭은 무엇인지 이야기해 봅시다.</div>
+        <div class="muted" style="margin-bottom:8px">왼쪽 그림에서 공기가 어디로 지나가는지 살펴봐요.</div>
+        <div class="seg2" id="hvMode"><button class="on" data-m="nose">👃 코로 숨쉬기</button><button data-m="mouth">🤧 코 막고 입으로</button></div>
+        <div class="row" style="margin-top:8px"><button class="hold in" id="hvHold">😤 꾹 눌러 들이마시기</button></div>
+      </div>
+      <div class="card">
+        <div class="sub">🗣️ 친구와 이야기해 본 뒤 확인해요</div>
+        <div class="cover"><div class="ans"><b>코와 입은 목구멍에서 만나 숨관으로 이어져 있기</b> 때문이에요. 그래서 코가 막혀도 입으로 들이마신 공기가 목구멍을 지나 숨관과 숨관가지를 거쳐 폐로 들어갈 수 있어요.</div><div class="lid">👆 눌러서 확인</div></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- =================== 실험관찰 =================== -->
+<section class="view" data-view="lab">
+  <div class="steps">
+    <span class="who">📗 실험관찰</span>
+    <button class="step" data-go="lab-1">① 호흡기관 알아보기</button>
+    <button class="step" data-go="lab-2">② 숨 쉴 때 몸의 변화</button>
+    <button class="step" data-go="lab-3">③ 모형 만들기</button>
+    <button class="step" data-go="lab-4">④ 공기 불어 넣기</button>
+    <button class="step" data-go="lab-5">⑤ 정리 · 평가</button>
+  </div>
+
+  <div class="page" data-id="lab-1">
+    <div class="stage" data-scene="lung"></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">🔎 호흡기관의 구조와 기능 <span class="pgtag">58쪽</span></div>
+        <p class="lead"><b>1</b> 이름 카드를 끌어서 3D 몸의 <b>알맞은 호흡기관</b>에 놓아 보세요. (카드를 누른 뒤 빈칸을 눌러도 돼요.)</p>
+      </div>
+      <div class="card"><div class="tray" id="tray"></div><div class="fb" id="trayFb"></div></div>
+      <div class="card">
+        <div class="sub"><b>2</b> 호흡기관의 기능을 조사해 써 봅시다.</div>
+        <div style="display:grid;gap:8px">
+          <div class="fcard"><div class="h" style="color:#4d3299">코</div><textarea placeholder="조사한 내용을 써 봐요"></textarea><div class="cover"><div class="ans">공기가 드나드는 곳입니다.</div><div class="lid">예시 보기</div></div></div>
+          <div class="fcard"><div class="h" style="color:#4d3299">숨관</div><div class="q" style="line-height:2">공기가 이동하는 <span class="ch" data-quiz="f1" data-ans="통로"><button>통로</button><button>주머니</button></span>입니다.</div></div>
+          <div class="fcard"><div class="h" style="color:#4d3299">숨관가지</div><div class="q" style="line-height:2"><span class="ch" data-quiz="f2" data-ans="숨관"><button>숨관</button><button>위</button></span>과/와 <span class="ch" data-quiz="f3" data-ans="폐"><button>심장</button><button>폐</button></span>을/를 연결하며, 공기가 이동하는 통로입니다.</div></div>
+          <div class="fcard"><div class="h" style="color:#4d3299">폐</div><textarea placeholder="조사한 내용을 써 봐요"></textarea><div class="cover"><div class="ans">산소를 받아들이고, 이산화 탄소를 몸 밖으로 내보냅니다.</div><div class="lid">예시 보기</div></div></div>
+        </div>
+        <div class="fb" data-fb="fn"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="page" data-id="lab-2">
+    <div class="stage" data-scene="lung"></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">✋ 숨 쉴 때 몸의 변화 <span class="pgtag">58쪽</span></div>
+        <p class="lead">내 가슴에 <b>양손을 얹고</b> 천천히 숨을 쉬어 보세요. 3D 몸에서도 버튼을 <b>꾹 누르면 들이마시고, 떼면 내쉬어요.</b></p>
+      </div>
+      <div class="card">
+        <div class="phase" data-phase>🌬️ 버튼을 눌러 숨을 들이마셔요</div>
+        <div class="row" style="margin-top:8px"><button class="hold in" data-hold="in">😤 꾹 눌러 들이마시기</button></div>
+        <div class="meter"><span>🫁 폐 속 공기</span><span></span><span data-m="air">0%</span><div class="bar"><i data-b="air" style="width:0"></i></div></div>
+        <div class="meter"><span>👕 가슴 크기</span><span></span><span data-m="chest">보통</span><div class="bar"><i data-b="chest" style="width:30%;background:linear-gradient(90deg,#ffd38a,#f08c2e)"></i></div></div>
+      </div>
+      <div class="card">
+        <div class="sub">② 숨을 들이마시고 내쉴 때 몸에서 일어나는 변화를 써 봅시다.</div>
+        <div class="q"><b>들이마실 때</b> 가슴이 <span class="ch" data-quiz="b1" data-ans="부풀어 올라요"><button>부풀어 올라요</button><button>오므라들어요</button></span>, 공기가 몸 <span class="ch" data-quiz="b2" data-ans="안으로"><button>안으로</button><button>밖으로</button></span> 들어와요.</div>
+        <div class="q"><b>내쉴 때</b> 가슴이 <span class="ch" data-quiz="b3" data-ans="오므라들어요"><button>부풀어 올라요</button><button>오므라들어요</button></span>, 공기가 몸 <span class="ch" data-quiz="b4" data-ans="밖으로"><button>안으로</button><button>밖으로</button></span> 나가요.</div>
+        <textarea placeholder="더 느낀 점을 써 봐요"></textarea>
+        <div class="fb" data-fb="body"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="page" data-id="lab-3">
+    <div class="stage desk" data-scene="model"></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">✂️ 호흡기관 모형 만들기 <span class="pgtag">59쪽</span></div>
+        <p class="lead">책상 위 재료를 <b>손가락으로 직접 끌어서</b> 모형을 만들어요. 노란 안내를 따라 하면 돼요.</p>
+      </div>
+      <div class="card">
+        <div class="stepl" id="stepList"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="mdlReset">↺ 처음부터</button>
+          <button class="btn" id="mdlSkip">⏭ 이 단계 도와줘요</button>
+        </div>
+      </div>
+      <div class="helper">💡 <b>실험하는 동안</b> 주름 빨대와 종이봉투 사이에 공기가 새지 않도록 셀로판테이프로 잘 막아요.</div>
+      <div class="card" id="mdlDone" hidden>
+        <div class="sub">🎉 호흡기관 모형 완성!</div>
+        <div class="muted">이제 모형을 세워서 빨대에 공기를 불어 넣어 볼까요?</div>
+        <button class="btn main" style="width:100%;margin-top:8px" data-go="lab-4">④ 공기 불어 넣으러 가기 →</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="page" data-id="lab-4">
+    <div class="stage desk" data-scene="model"></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">😮‍💨 공기를 불어 넣어 봐요 <span class="pgtag">59쪽</span></div>
+        <p class="lead">버튼을 <b>꾹 누르고 있으면</b> 빨대에 후~ 공기를 불어 넣어요. 손을 떼면 입을 뗀 거예요. 종이봉투가 어떻게 되는지 살펴봐요.</p>
+      </div>
+      <div class="card">
+        <button class="hold blow" id="blowBtn">😮‍💨 꾹 눌러 후~ 불기</button>
+        <button class="tg" id="micBtn" style="width:100%;margin-top:8px">🎤 태블릿 마이크에 직접 후~ 불기</button>
+        <div class="meter"><span>🛍️ 종이봉투 속 공기</span><span></span><span data-m="bag">0%</span><div class="bar"><i data-b="bag" style="width:0"></i></div></div>
+      </div>
+      <div class="card">
+        <div class="sub">② 호흡기관 모형에 공기를 불어 넣으면 어떤 변화가 일어나는지 써 봅시다.</div>
+        <div class="q">• 종이봉투가 <span class="ch" data-quiz="m1" data-ans="부풀어 올라요"><button>부풀어 올라요</button><button>오므라들어요</button></span></div>
+        <div class="q">• 입을 떼면 종이봉투 속 공기가 빨대로 나가면서 봉투가 <span class="ch" data-quiz="m2" data-ans="오므라들어요"><button>부풀어 올라요</button><button>오므라들어요</button></span></div>
+        <textarea placeholder="더 관찰한 내용을 써 봐요"></textarea>
+        <div class="fb" data-fb="mdl"></div>
+        <button class="tg" id="cmpBtn" style="width:100%;margin-top:8px">🔁 모형에 우리 몸 이름 붙여 보기</button>
+      </div>
+      <div class="safety">⚠️ <b>안전</b> 호흡기관 모형에 공기를 불어 넣을 때 무리하지 않도록 조심하며, 어지럼증을 느끼면 활동을 중단해요. 실험이 끝나면 주변을 깨끗이 정리하고, 만든 모형을 올바르게 처리해요.</div>
+    </aside>
+  </div>
+
+  <div class="page" data-id="lab-5">
+    <div class="stage" data-scene="lung"></div>
+    <aside class="panel">
+      <div class="card intro">
+        <div class="kicker">📝 정리해요 <span class="pgtag">59쪽</span></div>
+        <div class="sub">숨을 들이마시고 내쉴 때 호흡기관에서 공기가 이동하는 경로를 써 봅시다.</div>
+        <table class="pth">
+          <tr><th>숨을<br>들이마실 때</th><td>코 → <span class="slot" data-s="0"></span> → <span class="slot" data-s="1"></span> → <span class="slot" data-s="2"></span></td></tr>
+          <tr><th>숨을<br>내쉴 때</th><td>폐 → <span class="slot" data-s="3"></span> → <span class="slot" data-s="4"></span> → <span class="slot" data-s="5"></span></td></tr>
+        </table>
+        <div class="muted" style="margin:10px 0 6px">빈칸을 고른 뒤 아래 카드를 눌러요 (채운 칸을 누르면 비워져요)</div>
+        <div class="tray" id="pathTray"></div>
+        <button class="btn main" id="pathCheck" style="width:100%;margin-top:10px">정답 확인하기</button>
+        <div class="fb" id="pathFb"></div>
+      </div>
+      <div class="card">
+        <div class="sub">⭐ 스스로 평가하기</div>
+        <div class="self">
+          <div class="r"><div><span class="tag" style="background:#7c4dff">지식·이해</span>호흡기관의 구조와 기능을 설명할 수 있어요.</div><div class="faces"><button>😄</button><button>🙂</button><button>😐</button></div></div>
+          <div class="r"><div><span class="tag" style="background:#0b8f80">과정·기능</span>호흡기관 모형을 만들어 모형에 공기를 불어 넣으면 어떤 변화가 일어나는지 관찰할 수 있어요.</div><div class="faces"><button>😄</button><button>🙂</button><button>😐</button></div></div>
+          <div class="r"><div><span class="tag" style="background:#ef6c00">가치·태도</span>호흡기관에 흥미를 가지고 호흡기관 모형을 만드는 활동에 적극적으로 참여했어요.</div><div class="faces"><button>😄</button><button>🙂</button><button>😐</button></div></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const V3=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+function ss(a,b,x){ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); }
+const SVGNS='http://www.w3.org/2000/svg';
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function hash(i){ const x=Math.sin(i*127.1+311.7)*43758.5453; return x-Math.floor(x); }
+let seedN=7; function srnd(a=0,b=1){ seedN++; return a+(b-a)*hash(seedN*1.37); }
+
+let AC=null, soundOn=true;
+function ac(){ if(!soundOn) return null; if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return null;} } if(AC.state==='suspended') AC.resume().catch(()=>{}); return AC; }
+function tone(f,d,type='sine',v=.15,f2=0,delay=0){ const a=ac(); if(!a) return; const t0=a.currentTime+delay; const o=a.createOscillator(), g=a.createGain(); o.type=type; o.frequency.setValueAtTime(f,t0); if(f2) o.frequency.exponentialRampToValueAtTime(f2,t0+d); g.gain.setValueAtTime(v,t0); g.gain.exponentialRampToValueAtTime(.0008,t0+d); o.connect(g).connect(a.destination); o.start(t0); o.stop(t0+d+.02); }
+function noise(d=.15,v=.12,hp=1500,lp=0){ const a=ac(); if(!a) return; const b=a.createBuffer(1,a.sampleRate*d,a.sampleRate); const ch=b.getChannelData(0); for(let i=0;i<ch.length;i++) ch[i]=(Math.random()*2-1)*(1-i/ch.length); const s=a.createBufferSource(); s.buffer=b; let n=s; const f=a.createBiquadFilter(); f.type='highpass'; f.frequency.value=hp; n.connect(f); n=f; if(lp){ const l=a.createBiquadFilter(); l.type='lowpass'; l.frequency.value=lp; n.connect(l); n=l; } const g=a.createGain(); g.gain.value=v; n.connect(g).connect(a.destination); s.start(); }
+function setOpacity(mats,op){ (Array.isArray(mats)?mats:[mats]).forEach(m=>{ const t=op<.99; if(m.transparent!==t){ m.transparent=t; m.needsUpdate=true; } m.opacity=op; m.depthWrite=!t; }); }
+function isVisible(o){ while(o){ if(o.visible===false) return false; o=o.parent; } return true; }
+function sph(r,mat,x=0,y=0,z=0,sx=1,sy=1,sz=1){ const m=new THREE.Mesh(new THREE.SphereGeometry(1,28,20),mat); m.position.set(x,y,z); m.scale.set(r*sx,r*sy,r*sz); return m; }
+
+/* ==================================================================
+   Stage (3D 화면 틀)
+================================================================== */
+class Stage{
+  constructor(o={}){
+    this.o=o;
+    this.root=document.createElement('div'); this.root.className='stage-root';
+    const r=this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+    r.setPixelRatio(Math.min(window.devicePixelRatio||1,2)); r.toneMapping=THREE.ACESFilmicToneMapping; r.toneMappingExposure=o.exposure||1.0; r.outputColorSpace=THREE.SRGBColorSpace; r.setClearColor(0,0);
+    this.canvas=r.domElement; this.root.appendChild(this.canvas);
+    this.lab=document.createElement('div'); this.lab.className='labels'; this.svg=document.createElementNS(SVGNS,'svg'); this.lab.appendChild(this.svg); this.root.appendChild(this.lab);
+    this.hud=document.createElement('div'); this.hud.className='hud'; this.root.appendChild(this.hud);
+    this.toastEl=document.createElement('div'); this.toastEl.className='toast'; this.root.appendChild(this.toastEl);
+    const tools=document.createElement('div'); tools.className='stage-tools'; this.root.appendChild(tools); this.tools=tools;
+    this.scene=new THREE.Scene();
+    this.camera=new THREE.PerspectiveCamera(o.fov||35,1,.005,100);
+    const pm=new THREE.PMREMGenerator(r); this.scene.environment=pm.fromScene(new RoomEnvironment(),.04).texture; this.scene.environmentIntensity=o.envI??.6;
+    this.scene.add(new THREE.HemisphereLight('#ffffff','#c9b8a6',.9));
+    const key=new THREE.DirectionalLight('#fff6ec',1.8); key.position.set(2,4,5); this.scene.add(key);
+    const fill=new THREE.DirectionalLight('#e3ecff',.6); fill.position.set(-4,1,2); this.scene.add(fill);
+    const rim=new THREE.DirectionalLight('#ffffff',.9); rim.position.set(-1,3,-4); this.scene.add(rim);
+    this.ray=new THREE.Raycaster(); this.ndc=new THREE.Vector2(); this.labels=[];
+    this.canvas.addEventListener('pointerdown',e=>this._pd(e));
+    this.canvas.addEventListener('pointermove',e=>this._pm(e));
+    window.addEventListener('pointerup',e=>this._pu(e)); window.addEventListener('pointercancel',e=>this._pu(e));
+    this.controls=new OrbitControls(this.camera,this.canvas); this.controls.enableDamping=true; this.controls.dampingFactor=.09; this.controls.enablePan=false; this.controls.rotateSpeed=.8;
+    this.fit=o.fit; this.dir=(o.dir||V3(0,0,1)).clone().normalize();
+    new ResizeObserver(()=>this.resize()).observe(this.root);
+    this.active=false; this._tt=0;
+  }
+  addTool(label,fn){ const b=document.createElement('button'); b.innerHTML=label; b.onclick=fn; this.tools.appendChild(b); return b; }
+  mount(el){ const boot=el.querySelector('.boot'); if(boot) boot.remove(); if(this.root.parentNode!==el) el.appendChild(this.root); requestAnimationFrame(()=>this.resize(true)); this.start(); }
+  start(){ if(this.active) return; this.active=true; this.last=performance.now(); const loop=t=>{ if(!this.active) return; const dt=Math.min(.05,Math.max(0,(t-this.last)/1000)); this.last=t; this.update&&this.update(dt,t/1000); this.camTween(dt); this.controls.update(); this.renderer.render(this.scene,this.camera); this.updateLabels(); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+  stop(){ this.active=false; }
+  resize(force){ const w=this.root.clientWidth, h=this.root.clientHeight; if(w<2||h<2) return; if(!force && w===this._w && h===this._h) return; this._w=w; this._h=h; this.renderer.setSize(w,h,false); this.camera.aspect=w/h; this.camera.updateProjectionMatrix(); this.fitCam(); }
+  goalFor(f){ const t=Math.tan(THREE.MathUtils.degToRad(this.camera.fov/2)); const d=Math.max(f.h/2/t, f.w/2/(t*this.camera.aspect))*(f.pad||1.05); return {p:f.c.clone().addScaledVector(f.dir?f.dir.clone().normalize():this.dir,d),c:f.c.clone(),d}; }
+  tweenFit(f){ this.fit=f; if(!this._w){ return; } const g=this.goalFor(f); this._ct={k:0,p0:this.camera.position.clone(),c0:this.controls.target.clone(),...g}; }
+  camTween(dt){ const c=this._ct; if(!c) return; c.k=Math.min(1,c.k+dt/1.0); const e=ease(c.k); this.camera.position.lerpVectors(c.p0,c.p,e); this.controls.target.lerpVectors(c.c0,c.c,e); if(c.k>=1){ this._ct=null; this.controls.minDistance=.1; this.controls.maxDistance=c.d*2; } }
+  fitCam(){ const f=this.fit; if(!f) return; const g=this.goalFor(f); this.camera.position.copy(g.p); this.controls.target.copy(g.c); this.camera.lookAt(g.c); this.controls.minDistance=.1; this.controls.maxDistance=g.d*2; this.controls.update(); }
+  pick(e,objs){ const b=this.canvas.getBoundingClientRect(); this.ndc.set((e.clientX-b.left)/b.width*2-1,-(e.clientY-b.top)/b.height*2+1); this.ray.setFromCamera(this.ndc,this.camera); const h=this.ray.intersectObjects(objs,false); return h.find(x=>isVisible(x.object))||null; }
+  _pd(e){ ac(); this._down={x:e.clientX,y:e.clientY,t:performance.now()}; }
+  _pm(e){ if(e.pointerType==='mouse'&&e.buttons===0&&this.hover) this.hover(e); }
+  _pu(e){ if(this._down&&this.active){ const d=Math.hypot(e.clientX-this._down.x,e.clientY-this._down.y); if(d<8&&performance.now()-this._down.t<700&&this.click&&e.target===this.canvas) this.click(e); } this._down=null; }
+  addLabel(o){ const el=document.createElement('div'); el.className='lbl '+(o.cls||''); el.innerHTML=o.html; const dot=document.createElement('div'); dot.className='ldot '+(o.cls||''); const ln=document.createElementNS(SVGNS,'line'); this.svg.appendChild(ln); this.lab.append(dot,el);
+    const L={el,dot,ln,pos:o.pos,dx:o.dx||0,dy:o.dy||0,show:o.show!==false,noLine:!!o.noLine,html:o.html,set(h){ if(h!==this.html){ this.html=h; el.innerHTML=h; } },remove:()=>{el.remove();dot.remove();ln.remove(); this.labels=this.labels.filter(x=>x!==L);}}; this.labels.push(L); return L; }
+  updateLabels(){ const w=this._w||1,h=this._h||1; const v=V3();
+    for(const L of this.labels){ let ok=L.show; let x=0,y=0; if(ok){ v.copy(L.pos()).project(this.camera); ok=v.z<1&&v.z>-1; x=(v.x+1)/2*w; y=(1-v.y)/2*h; }
+      const disp=ok?'':'none'; L.el.style.display=disp; L.dot.style.display=(ok&&!L.noLine)?'':'none'; L.ln.style.display=(ok&&!L.noLine)?'':'none'; if(!ok) continue;
+      const bw=L.el.offsetWidth/2+6, bh=L.el.offsetHeight/2+6;
+      const lx=clamp(x+L.dx,bw,w-bw-(this.rightPad||0)), ly=clamp(y+L.dy,bh+4,h-bh-4);
+      L.el.style.left=lx+'px'; L.el.style.top=ly+'px'; L.dot.style.left=x+'px'; L.dot.style.top=y+'px';
+      L.ln.setAttribute('x1',x); L.ln.setAttribute('y1',y); L.ln.setAttribute('x2',lx); L.ln.setAttribute('y2',ly); } }
+  toast(msg,ms=2200){ this.toastEl.innerHTML=msg; this.toastEl.classList.add('show'); clearTimeout(this._tt); this._tt=setTimeout(()=>this.toastEl.classList.remove('show'),ms); }
+  setHud(html){ this.hud.innerHTML=html; }
+}
+
+
+
+const SFX={
+  ok(){ tone(660,.12,'sine',.18); tone(990,.22,'sine',.18,0,.1); },
+  no(){ tone(240,.25,'sawtooth',.06,150); },
+  pop(){ tone(420,.12,'triangle',.14,880); },
+  tick(){ tone(1400,.02,'square',.03); },
+  tape(){ noise(.12,.1,2500); },
+  snap(){ tone(900,.05,'square',.06,500); },
+  crinkle(){ noise(.08,.07,3000); },
+  yay(){ [523,659,784,1046].forEach((f,i)=>tone(f,.18,'sine',.14,0,i*.09)); },
+};
+/* 숨소리 */
+let breathNode=null;
+function breathSound(on,inh){ const a=ac(); if(!a) return; if(on&&!breathNode){ const len=a.sampleRate*2, b=a.createBuffer(1,len,a.sampleRate), ch=b.getChannelData(0); for(let i=0;i<len;i++) ch[i]=Math.random()*2-1;
+    const s=a.createBufferSource(); s.buffer=b; s.loop=true; const f=a.createBiquadFilter(); f.type='bandpass'; f.Q.value=.8; const g=a.createGain(); g.gain.value=0; s.connect(f).connect(g).connect(a.destination); s.start(); breathNode={s,f,g}; }
+  if(breathNode){ breathNode.g.gain.setTargetAtTime(on?.05:0,a.currentTime,.08); breathNode.f.frequency.setTargetAtTime(inh?1300:800,a.currentTime,.1); } }
+
+/* ---------- 텍스처 ---------- */
+function canvasTex(w,h,draw){ const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); draw(g,w,h); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t; }
+const TEX={};
+function initTextures(){
+  TEX.lung=canvasTex(512,512,(g,w,h)=>{ g.fillStyle='#d9837d'; g.fillRect(0,0,w,h);
+    for(let i=0;i<5000;i++){ g.fillStyle=Math.random()<.5?`rgba(150,50,55,${rnd(.05,.18)})`:`rgba(255,200,195,${rnd(.05,.2)})`; g.beginPath(); g.arc(Math.random()*w,Math.random()*h,rnd(1,5),0,7); g.fill(); }
+    for(let i=0;i<300;i++){ g.strokeStyle=`rgba(120,40,50,${rnd(.08,.2)})`; g.lineWidth=rnd(.6,1.4); const x=Math.random()*w,y=Math.random()*h; g.strokeRect(x,y,rnd(8,22),rnd(8,22)); }
+    g.strokeStyle='rgba(110,30,40,.55)'; g.lineWidth=4; g.beginPath(); g.moveTo(0,h*.38); g.bezierCurveTo(w*.3,h*.42,w*.6,h*.55,w,h*.6); g.stroke(); g.beginPath(); g.moveTo(w*.5,h*.52); g.bezierCurveTo(w*.6,h*.62,w*.8,h*.7,w,h*.75); g.stroke(); });
+  TEX.bump=canvasTex(256,256,(g,w,h)=>{ g.fillStyle='#808080'; g.fillRect(0,0,w,h); for(let i=0;i<3000;i++){ g.fillStyle=`rgba(${Math.random()<.5?0:255},${Math.random()<.5?0:255},${Math.random()<.5?0:255},.08)`; g.beginPath(); g.arc(Math.random()*w,Math.random()*h,rnd(1,4),0,7); g.fill(); } });
+  TEX.bump.wrapS=TEX.bump.wrapT=THREE.RepeatWrapping;
+  TEX.kraft=canvasTex(512,512,(g,w,h)=>{ g.fillStyle='#b8875a'; g.fillRect(0,0,w,h);
+    for(let i=0;i<9000;i++){ g.strokeStyle=Math.random()<.5?`rgba(90,55,25,${rnd(.05,.18)})`:`rgba(230,190,140,${rnd(.05,.2)})`; g.lineWidth=rnd(.5,1.5); const x=Math.random()*w,y=Math.random()*h,a=rnd(0,6.3),l=rnd(2,9); g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l); g.stroke(); }
+    g.strokeStyle='rgba(90,55,25,.35)'; g.lineWidth=3; for(const x of [w*.18,w*.82]){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); } g.beginPath(); g.moveTo(0,h*.86); g.lineTo(w,h*.86); g.stroke(); });
+  TEX.shadow=canvasTex(256,256,(g,w,h)=>{ const gr=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); gr.addColorStop(0,'rgba(40,30,60,.28)'); gr.addColorStop(1,'rgba(40,30,60,0)'); g.fillStyle=gr; g.fillRect(0,0,w,h); });
+  TEX.wood=canvasTex(512,512,(g,w,h)=>{ g.fillStyle='#e7d3b4'; g.fillRect(0,0,w,h); for(let i=0;i<160;i++){ g.strokeStyle=`rgba(${rnd(150,180)|0},${rnd(110,130)|0},70,${rnd(.06,.18)})`; g.lineWidth=rnd(1,3); const y=Math.random()*h; g.beginPath(); g.moveTo(0,y); for(let x=0;x<=w;x+=32) g.lineTo(x,y+Math.sin(x*.02+i)*rnd(2,6)); g.stroke(); } });
+  TEX.wood.wrapS=TEX.wood.wrapT=THREE.RepeatWrapping; TEX.wood.repeat.set(2,2);
+  TEX.mat=canvasTex(1024,768,(g,w,h)=>{ g.fillStyle='#2d7a5c'; g.fillRect(0,0,w,h);
+    for(let x=0;x<=w;x+=16){ g.strokeStyle=x%80===0?'rgba(255,255,255,.35)':'rgba(255,255,255,.12)'; g.lineWidth=x%80===0?1.6:1; g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); }
+    for(let y=0;y<=h;y+=16){ g.strokeStyle=y%80===0?'rgba(255,255,255,.35)':'rgba(255,255,255,.12)'; g.lineWidth=y%80===0?1.6:1; g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke(); } });
+}
+function stickerTex(txt,round){ return canvasTex(256,round?256:128,(g,w,h)=>{ g.clearRect(0,0,w,h); g.fillStyle='#fffdf7'; g.strokeStyle='#c9bfae'; g.lineWidth=6;
+  if(round){ g.beginPath(); g.arc(w/2,h/2,w/2-6,0,7); g.fill(); g.stroke(); } else { g.beginPath(); g.roundRect(4,4,w-8,h-8,26); g.fill(); g.stroke(); }
+  g.fillStyle='#3b2f5c'; g.font=`900 ${round?110:(txt.length>2?58:76)}px "Noto Sans KR",sans-serif`; g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,w/2,h/2+4); }); }
+
+/* ---------- 굵기가 변하는 관 ---------- */
+function taperTube(pts,rf,seg=60,rad=10,closed=false){
+  const curve=pts.getPointAt?pts:new THREE.CatmullRomCurve3(pts,closed,'centripetal'); const L=curve.getLength(); const fr=curve.computeFrenetFrames(seg,closed);
+  const pos=[],nor=[],uv=[],idx=[]; const P=V3();
+  for(let i=0;i<=seg;i++){ const u=i/seg; curve.getPointAt(u,P); const r=rf(u,u*L), N=fr.normals[i], B=fr.binormals[i];
+    for(let j=0;j<=rad;j++){ const th=j/rad*Math.PI*2, c=Math.cos(th), s=Math.sin(th); const nx=N.x*c+B.x*s, ny=N.y*c+B.y*s, nz=N.z*c+B.z*s;
+      pos.push(P.x+nx*r,P.y+ny*r,P.z+nz*r); nor.push(nx,ny,nz); uv.push(u*L*8,j/rad);
+      if(i<seg&&j<rad){ const a=i*(rad+1)+j,b=a+rad+1; idx.push(a,b,a+1,b,b+1,a+1); } } }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3)); g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); g.setIndex(idx); return g; }
+
+/* ==================================================================
+   호흡기관 3D 장면 (앞 = +z, 사람의 왼쪽 = +x)
+================================================================== */
+const CARINA=V3(0,1.372,.012);
+const AIRWAY=[V3(0,1.605,.2),V3(0,1.626,.112),V3(0,1.636,.09),V3(0,1.655,.06),V3(0,1.66,.02),V3(0,1.642,-.018),V3(0,1.6,-.028),V3(0,1.56,-.024),V3(0,1.52,-.012),V3(0,1.49,-.004),V3(0,1.43,.004),CARINA];
+const LUNG={R:{c:V3(-.088,1.29,.0),e:V3(.084,.152,.088),s:-1},L:{c:V3(.09,1.285,.0),e:V3(.076,.146,.084),s:1}};
+function lungGeo(side){ const g=new THREE.SphereGeometry(1,64,48), p=g.attributes.position, v=V3(), s=LUNG[side].s;
+  for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i); let {x,y,z}=v; const xm=x*s;
+    if(y>0){ const k=1-.42*Math.pow(y,1.6); x*=k; z*=k; }                       // 위쪽(폐 끝)을 둥글게 좁히기
+    if(y<-.2){ y=-.2+(y+.2)*.55; y+= .14*(1-x*x-z*z); }                          // 아래쪽을 가로막 위에 얹힌 오목한 바닥으로
+    if(xm<0){ x*= .5; }                                                          // 가운데 쪽을 납작하게
+    if(side==='L'&&xm<.1&&z>0&&y<.2&&y>-.6){ const k=Math.exp(-(((y+.18)/.28)**2))*Math.exp(-((xm/.45)**2)); z-=.32*k*z; x+= .25*k*s; } // 심장이 놓이는 자리
+    z*=1+.08*xm*s*s; p.setXYZ(i,x,y,z); }
+  g.computeVertexNormals(); return g; }
+
+class LungScene extends Stage{
+  constructor(){
+    super({fov:30,fit:{c:V3(0,1.42,.02),w:.6,h:.64},dir:V3(.15,.05,1),envI:.7});
+    this.FIT_EX=this.fit; this.FIT_SIDE={c:V3(0,1.38,.02),w:.55,h:.62,dir:V3(1,.12,.75)};
+    /* 몸 실루엣 (교과서처럼 연보라) */
+    const bodyM=new THREE.MeshStandardMaterial({color:'#b7aedd',roughness:.85,transparent:true,opacity:.42,depthWrite:false,side:THREE.BackSide}); this.bodyM=bodyM;
+    const body=new THREE.Group(); this.body=body; this.scene.add(body);
+    const prof=[[0,1.0],[.12,1.0],[.148,1.06],[.142,1.12],[.15,1.22],[.158,1.32],[.168,1.41],[.152,1.45],[.09,1.48],[.048,1.5],[.045,1.56],[0,1.57]].map(p=>new THREE.Vector2(p[0],p[1]));
+    this.torso=new THREE.Mesh(new THREE.LatheGeometry(prof,48),bodyM); this.torso.scale.z=.62; body.add(this.torso);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(1,40,30),bodyM); head.position.set(0,1.67,.005); head.scale.set(.086,.105,.098); body.add(head);
+    const noseB=new THREE.Mesh(new THREE.ConeGeometry(.016,.04,16),bodyM); noseB.position.set(0,1.645,.105); noseB.rotation.x=Math.PI/2+.5; body.add(noseB);
+    for(const s of [-1,1]){ const d=V3(s*.11,-.25,.02); const m=new THREE.Mesh(new THREE.CapsuleGeometry(.042,d.length(),6,16),bodyM); m.position.set(s*.2,1.3,.01); m.quaternion.setFromUnitVectors(V3(0,1,0),d.normalize()); body.add(m); }
+    body.traverse(o=>o.renderOrder=10);
+    this.mats={}; this.picks=[];
+    const om=(name,col,o={})=>{ const m=new THREE.MeshPhysicalMaterial({color:col,roughness:.45,clearcoat:.5,clearcoatRoughness:.35,emissive:'#ffb000',emissiveIntensity:0,...o}); (this.mats[name]||(this.mats[name]=[])).push(m); return m; };
+    const reg=(m,n,par=this.scene)=>{ m.userData.org=n; this.picks.push(m); par.add(m); return m; };
+    /* 코 (콧속과 목구멍) */
+    const noseM=om('코','#d98a7e',{transparent:true,opacity:.92});
+    reg(new THREE.Mesh(taperTube(AIRWAY.slice(1,9),u=>.006+.006*Math.sin(Math.PI*clamp(u*1.6,0,1))+(u>.6?.002:0),60,14),noseM),'코');
+    const conch=new THREE.Mesh(new THREE.SphereGeometry(1,28,20),noseM); conch.position.set(0,1.653,.045); conch.scale.set(.012,.018,.04); reg(conch,'코');
+    /* 숨관 */
+    const trM=om('숨관','#a9d9e4');
+    const trP=AIRWAY.slice(8); reg(new THREE.Mesh(taperTube(trP,()=>.0082,40,16),trM),'숨관');
+    const ringM=om('숨관','#d8f1f6'); const tc=new THREE.CatmullRomCurve3(trP); const rings=[];
+    for(let t=.14;t<.96;t+=.07){ const g=new THREE.TorusGeometry(.0088,.0016,8,24); const p=tc.getPointAt(t), tg=tc.getTangentAt(t); const m=new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0,0,1),tg)); m.setPosition(p); g.applyMatrix4(m); rings.push(g); }
+    reg(new THREE.Mesh(mergeGeometries(rings),ringM),'숨관');
+    /* 폐 + 숨관가지 (숨 쉴 때 함께 커지도록 그룹) */
+    const brM=om('숨관가지','#b8d6e2',{roughness:.35}), lungMo=om('폐','#ffffff',{map:TEX.lung,bumpMap:TEX.bump,bumpScale:1.2,roughness:.6,sheen:.6,sheenColor:new THREE.Color('#ffd5d0')});
+    const lungMt=om('폐','#ffffff',{map:TEX.lung,roughness:.6,transparent:true,opacity:.2,depthWrite:false,side:THREE.DoubleSide});
+    this.lungMo=lungMo; this.lungMt=lungMt;
+    this.side={}; this.terminals=[]; seedN=21;
+    for(const k of ['R','L']){ const Lg=LUNG[k], s=Lg.s; const grp=new THREE.Group(); grp.position.set(Lg.c.x,Lg.c.y+Lg.e.y*.9,Lg.c.z); this.scene.add(grp);
+      const inner=new THREE.Group(); inner.position.copy(grp.position).negate(); grp.add(inner);
+      const mesh=new THREE.Mesh(lungGeo(k),k==='R'?lungMo:lungMt); mesh.position.copy(Lg.c); mesh.scale.copy(Lg.e); mesh.renderOrder=k==='L'?9:0; reg(mesh,'폐',inner);
+      // 숨관가지 나무
+      const geos=[]; const inside=p=>{ const d=p.clone().sub(Lg.c); return (d.x/(Lg.e.x*.62))**2+(d.y/(Lg.e.y*.7))**2+(d.z/(Lg.e.z*.6))**2<1; };
+      const grow=(p0,dir,len,r,depth,chain)=>{ let p1=p0.clone().addScaledVector(dir,len); let tries=0; while(!inside(p1)&&tries<8){ len*=.7; p1=p0.clone().addScaledVector(dir,len); tries++; } if(!inside(p1)&&depth<4) return;
+        const mid=p0.clone().lerp(p1,.5).add(V3(srnd(-.002,.002),srnd(-.002,.002),srnd(-.003,.003)));
+        geos.push(taperTube([p0,mid,p1],u=>lerp(r,r*.78,u),8,7)); const ch=[...chain,p1];
+        if(depth===0){ this.terminals.push({side:k,chain:ch}); return; }
+        for(const sg of [-1,1]){ const ax=V3(srnd(-.3,.3),srnd(-.3,.3),1).normalize(); const a=srnd(.32,.55)*sg; const nd=dir.clone().applyAxisAngle(ax,a); nd.y-=.08; nd.normalize();
+          grow(p1,nd,len*srnd(.7,.8),r*.74,depth-1,ch); } };
+      const main=V3(s*.62,-.78,0).normalize(); const p0=CARINA.clone(), p1=p0.clone().addScaledVector(main,.045);
+      geos.push(taperTube([p0,p0.clone().lerp(p1,.5),p1],()=>.0066,8,10));
+      for(const [dv,ln] of [[V3(s*.35,1,.1),.04],[V3(s*.9,-.2,.15),.045],[V3(s*.45,-1,.2),.055],[V3(s*.2,-1,-.4),.055]]){ grow(p1,dv.normalize(),ln,.0046,4,[p1]); }
+      const tree=new THREE.Mesh(mergeGeometries(geos),brM); reg(tree,'숨관가지',inner);
+      this.side[k]={grp,mesh,tree}; }
+    /* 가로막 */
+    const dia=new THREE.Mesh(new THREE.SphereGeometry(1,40,20,0,Math.PI*2,0,Math.PI*.42),new THREE.MeshStandardMaterial({color:'#e7a99d',roughness:.7,transparent:true,opacity:.5,depthWrite:false,side:THREE.DoubleSide}));
+    dia.scale.set(.16,.06,.1); dia.position.set(0,1.105,0); this.scene.add(dia); this.dia=dia;
+    /* 공기 알갱이 */
+    this.routes=[]; const T=this.terminals; for(let i=0;i<T.length;i+=Math.max(1,Math.floor(T.length/28))){ const pts=[...AIRWAY,...T[i].chain.slice(0)]; const c=new THREE.CatmullRomCurve3(pts,false,'centripetal'); this.routes.push({c,side:T[i].side}); }
+    this.NP=160; this.parts=[...Array(this.NP)].map(()=>({on:false,u:0,r:0,kind:0,o:V3(),life:0}));
+    this.pm=new THREE.InstancedMesh(new THREE.SphereGeometry(1,10,8),new THREE.MeshBasicMaterial({transparent:true,depthTest:false}),this.NP); this.pm.frustumCulled=false; this.pm.renderOrder=14; this.scene.add(this.pm);
+    for(let i=0;i<this.NP;i++) this.pm.setColorAt(i,new THREE.Color('#5aa9ff'));
+    this.NS=60; this.sp=[...Array(this.NS)].map(()=>({life:0,p:V3(),v:V3()}));
+    this.spm=new THREE.InstancedMesh(new THREE.SphereGeometry(1,8,6),new THREE.MeshBasicMaterial({color:'#e8323a',transparent:true,depthTest:false}),this.NS); this.spm.frustumCulled=false; this.spm.renderOrder=15; this.scene.add(this.spm);
+    /* 이름표 */
+    this.anchors={'코':()=>V3(0,1.648,.1),'숨관':()=>V3(0,1.45,.01),'숨관가지':()=>V3(.05,1.33,.02),'폐':()=>V3(-.11,1.25,.07)};
+    const LP={'코':[150,-30],'숨관':[160,-20],'숨관가지':[150,30],'폐':[-140,30]};
+    this.L={}; for(const k in this.anchors) this.L[k]=this.addLabel({html:k,pos:this.anchors[k],dx:LP[k][0],dy:LP[k][1]});
+    this.hand=this.addLabel({html:'✋ 가슴에 손을 얹어요',cls:'say',pos:()=>V3(0,1.33,.11*(1+.08*this.b)),dx:-150,dy:40,show:false});
+    this.addTool('↺ 처음 시점',()=>this.tweenFit(this.fitFor()));
+    /* 상태 */
+    this.opt={labels:true,body:true,inside:true}; this.mode='explore'; this.b=0; this.bt=0; this.auto=true; this.held=false; this.rate=16; this.ph=0; this.bdir=0; this.o2=0; this.co2=0; this.sel=null;
+    this.click=e=>this.onClick(e);
+    this.hover=e=>{ if(this.mode!=='explore') return; const h=this.pick(e,this.picks); this.canvas.style.cursor=h?'pointer':'grab'; };
+    this.setMode('explore');
+  }
+  fitFor(){ return this.mode==='feel'?this.FIT_SIDE:this.FIT_EX; }
+  setMode(m){ this.mode=m; this.sel=null; this.highlight(null); for(const k in this.L) this.L[k].show=m==='explore'&&this.opt.labels;
+    this.hand.show=m==='feel'; this.controls.enabled=m!=='label'; this.auto=m==='sim'||m==='explore'||m==='path'; this.held=false; this.parts.forEach(p=>p.on=false);
+    this.tweenFit(this.fitFor());
+    const hud={explore:'👆 호흡기관을 눌러 보세요 · 드래그하면 빙글 돌아가요',label:'🏷️ 이름 카드를 알맞은 빈칸에 놓아요',sim:'🌬️ 숨을 쉴 때 공기가 어떻게 이동하는지 살펴봐요',feel:'✋ 버튼을 누르고 있으면 숨을 들이마셔요',path:'🌬️ 공기가 이동하는 길을 따라가 봐요'}[m];
+    this.setHud(`<span class="chip">${hud}</span>`); this.applyLook(); }
+  applyLook(){ this.body.visible=this.opt.body||this.mode==='feel'; this.side.L.mesh.material=this.opt.inside?this.lungMt:this.lungMo; }
+  setOpt(k,v){ this.opt[k]=v; if(k==='labels') for(const n in this.L) this.L[n].show=v&&this.mode==='explore'; this.applyLook(); }
+  highlight(n){ for(const [k,ms] of Object.entries(this.mats)) ms.forEach(m=>m.emissiveIntensity=k===n?.3:0); for(const k in this.L) this.L[k].el.classList.toggle('sel',k===n); }
+  onClick(e){ if(this.mode!=='explore') return; const h=this.pick(e,this.picks); const n=h?h.object.userData.org:null; this.sel=n; this.highlight(n); this.onSelect&&this.onSelect(n); if(n) SFX.pop(); }
+  setActivity(a){ this.rate=a==='run'?32:16; }
+  update(dt,T){
+    if(this.mode==='explore'&&this.sel){ (this.mats[this.sel]||[]).forEach(m=>m.emissiveIntensity=.18+.14*Math.sin(T*6)); }
+    /* 숨 쉬기 */
+    const b0=this.b;
+    if(this.auto&&this.mode!=='label'){ this.ph+=dt*this.rate/60; const f=this.ph%1, ti=.42; this.bt=f<ti?ease(f/ti):1-ease((f-ti)/(1-ti)); this.b=this.bt; }
+    else if(this.mode!=='label'){ const tgt=this.held?1:0; this.b+= (tgt-this.b)*Math.min(1,dt*(this.held?1.4:1.1)); }
+    const db=this.b-b0; const v=db/Math.max(dt,1e-4); const nd=Math.abs(v)<.05?0:(v>0?1:-1); if(nd!==this.bdir){ this.bdir=nd; this.onPhase&&this.onPhase(nd); if(this.mode!=='label') breathSound(nd!==0,nd>0); }
+    const b=this.b;
+    for(const k of ['R','L']){ const g=this.side[k].grp; g.scale.set(1+.07*b,1+.09*b,1+.08*b); }
+    this.dia.position.y=1.105-.03*b; this.dia.scale.y=.06*(1-.35*b);
+    this.torso.scale.set(1+.035*b,1+.01*b,.62*(1+.08*b));
+    /* 공기 알갱이 */
+    const flowing=this.mode!=='label'&&this.mode!=='explore'||(this.mode==='explore');
+    if(flowing&&db>0){ const n=db*120; this._acc=(this._acc||0)+n; while(this._acc>=1){ this._acc--; const p=this.parts.find(x=>!x.on); if(!p) break; p.on=true; p.kind=0; p.r=Math.floor(Math.random()*this.routes.length); p.u=rnd(0,.02); p.o.set(rnd(-1,1),rnd(-1,1),rnd(-1,1)).multiplyScalar(.0035); } }
+    if(flowing&&db<0){ const n=-db*90; this._acc2=(this._acc2||0)+n; while(this._acc2>=1){ this._acc2--; const p=this.parts.find(x=>!x.on); if(!p) break; p.on=true; p.kind=1; p.r=Math.floor(Math.random()*this.routes.length); p.u=rnd(.97,1); p.o.set(rnd(-1,1),rnd(-1,1),rnd(-1,1)).multiplyScalar(.0035); } }
+    const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=V3(), P=V3(), cO=new THREE.Color('#3d8bff'), cC=new THREE.Color('#9b6cc8');
+    const camD=this.camera.position.distanceTo(this.controls.target), sz=clamp(camD*.0032,.0016,.006);
+    this.parts.forEach((p,i)=>{ if(p.on){ const R=this.routes[p.r];
+        if(p.kind===0){ p.u+=Math.max(0,db)*1.15+dt*.015; if(p.u>=1){ p.on=false; this.o2++; this.spark(R.c.getPointAt(1),R.side); } }
+        else { p.u-=Math.max(0,-db)*1.2+dt*.012; if(p.u<=0){ p.on=false; this.co2++; } }
+        if(p.on){ R.c.getPointAt(clamp(p.u,0,1),P); if(p.u>.4){ const g=this.side[R.side].grp; P.sub(g.position).multiply(g.scale).add(g.position); } P.add(p.o); if(p.kind===1&&p.u<.03) P.z+= (.03-p.u)*2; sc.setScalar(sz); m4.compose(P,q,sc); this.pm.setColorAt(i,p.kind?cC:cO); } }
+      if(!p.on) m4.makeScale(0,0,0); this.pm.setMatrixAt(i,m4); });
+    this.pm.instanceMatrix.needsUpdate=true; this.pm.instanceColor.needsUpdate=true;
+    this.sp.forEach((s,i)=>{ if(s.life>0){ s.life-=dt/1.2; s.p.addScaledVector(s.v,dt); sc.setScalar(sz*.8*Math.sin(Math.PI*Math.max(0,s.life))); m4.compose(s.p,q,sc); } else m4.makeScale(0,0,0); this.spm.setMatrixAt(i,m4); });
+    this.spm.instanceMatrix.needsUpdate=true;
+    this.onState&&this.onState(this);
+  }
+  spark(p,side){ const s=this.sp.find(x=>x.life<=0); if(!s) return; const g=this.side[side].grp; s.p.copy(p).sub(g.position).multiply(g.scale).add(g.position); s.v.set(rnd(-1,1),rnd(-1,1),rnd(-1,1)).normalize().multiplyScalar(.02); s.life=1; }
+}
+
+/* ==================================================================
+   코·입 단면 그림 (생각+)
+================================================================== */
+class HeadView{
+  constructor(){ this.root=document.createElement('div'); this.root.className='stage-root'; this.cv=document.createElement('canvas'); this.cv.className='head2d'; this.root.appendChild(this.cv); this.g=this.cv.getContext('2d');
+    this.toastEl=document.createElement('div'); this.toastEl.className='toast'; this.root.appendChild(this.toastEl);
+    this.mode='nose'; this.held=false; this.b=0; this.open=0; this.parts=[...Array(70)].map(()=>({on:false,u:0,o:0,k:0})); this.active=false; new ResizeObserver(()=>this.resize()).observe(this.root);
+    this.cv.addEventListener('pointerdown',()=>{ ac(); this.held=true; }); window.addEventListener('pointerup',()=>{ if(this._hb) return; this.held=false; }); }
+  mount(el){ if(this.root.parentNode!==el) el.appendChild(this.root); this.resize(); if(!this.active){ this.active=true; this.last=performance.now(); const loop=t=>{ if(!this.active) return; const dt=Math.min(.05,(t-this.last)/1000); this.last=t; this.step(dt,t/1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); } }
+  stop(){ this.active=false; breathSound(false); }
+  resize(){ const r=Math.min(window.devicePixelRatio||1,2); const w=this.root.clientWidth,h=this.root.clientHeight; if(!w) return; this.cv.width=w*r; this.cv.height=h*r; this.W=w; this.H=h; this.r=r; }
+  toast(m,ms=2400){ this.toastEl.innerHTML=m; this.toastEl.classList.add('show'); clearTimeout(this._t); this._t=setTimeout(()=>this.toastEl.classList.remove('show'),ms); }
+  path(){ const nose=[[110,236],[250,250],[300,276],[440,276],[580,284],[652,326],[662,400],[648,470],[628,540],[628,640],[640,800]], mouth=[[110,336],[250,338],[330,346],[460,350],[600,358],[660,410],[648,470],[628,540],[628,640],[640,800]]; return this.mode==='nose'?nose:mouth; }
+  at(pts,u){ const L=[0]; for(let i=1;i<pts.length;i++) L.push(L[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1])); const d=u*L[L.length-1]; let i=1; while(i<L.length-1&&L[i]<d) i++; const t=(d-L[i-1])/(L[i]-L[i-1]); return [lerp(pts[i-1][0],pts[i][0],t),lerp(pts[i-1][1],pts[i][1],t)]; }
+  tag(g,txt,x,y,tx,ty,col='#7b61c9'){ g.strokeStyle=col; g.lineWidth=2.5; g.beginPath(); g.moveTo(x,y); g.lineTo(tx,ty); g.stroke(); g.fillStyle=col; g.beginPath(); g.arc(tx,ty,6,0,7); g.fill();
+    g.font='900 22px "Noto Sans KR",sans-serif'; const w=g.measureText(txt).width+30; g.fillStyle='#fff'; g.strokeStyle=col; g.lineWidth=3; g.beginPath(); g.roundRect(x-w/2,y-20,w,40,20); g.fill(); g.stroke(); g.fillStyle='#3b2f5c'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,x,y+1); }
+  step(dt,time){ const W=this.W,H=this.H; if(!W) return; const g=this.g; g.setTransform(this.r,0,0,this.r,0,0);
+    const b0=this.b; this.b+=((this.held?1:0)-this.b)*Math.min(1,dt*(this.held?1.3:1)); const db=this.b-b0; const dir=Math.abs(db/dt)<.05?0:db>0?1:-1; if(dir!==this._d){ this._d=dir; breathSound(dir!==0,dir>0); }
+    this.open+=((this.mode==='mouth'?1:0)-this.open)*Math.min(1,dt*5);
+    const bg=g.createRadialGradient(W*.4,H*.4,10,W*.5,H*.5,Math.max(W,H)*.75); bg.addColorStop(0,'#ffffff'); bg.addColorStop(1,'#ece8f3'); g.fillStyle=bg; g.fillRect(0,0,W,H);
+    const S=Math.min(W/1060,H/860); g.translate(W*.5-500*S,H*.5-470*S); g.scale(S,S); g.lineJoin='round'; g.lineCap='round';
+    const th=this.open*.16, hx0=640,hy0=300; const rot=(x,y)=>{ const dx=x-hx0,dy=y-hy0,c=Math.cos(-th),s=Math.sin(-th); return [hx0+dx*c-dy*s,hy0+dx*s+dy*c]; };
+    const SK='#f7d2ab', SKL='#dba877', LIP='#e07585', BONE='#f6ecd6', BL='#d3c3a1', TW='#ffffff', TL='#c9bfa8';
+    // 머리
+    g.beginPath(); g.moveTo(330,-600); g.lineTo(322,40); g.bezierCurveTo(318,90,300,110,268,150); g.bezierCurveTo(250,170,215,190,212,208); g.bezierCurveTo(210,228,240,244,278,250); g.bezierCurveTo(262,262,244,284,246,306); g.bezierCurveTo(247,330,258,342,272,348);
+    g.lineTo(620,348); g.lineTo(620,470); g.lineTo(430,592); g.lineTo(468,1500); g.lineTo(2400,1500); g.lineTo(2400,-600); g.closePath(); g.fillStyle=SK; g.fill(); g.lineWidth=4; g.strokeStyle=SKL; g.stroke();
+    g.beginPath(); g.moveTo(246,306); g.bezierCurveTo(234,322,244,344,272,348); g.bezierCurveTo(262,336,262,318,258,304); g.closePath(); g.fillStyle=LIP; g.fill();
+    // 콧속(공기가 지나는 길)
+    g.beginPath(); g.moveTo(262,248); g.bezierCurveTo(300,230,340,200,420,206); g.bezierCurveTo(540,214,620,250,664,300); g.lineTo(580,294); g.lineTo(300,294); g.bezierCurveTo(286,290,272,270,262,248); g.closePath(); g.fillStyle='#fbe1dc'; g.fill(); g.lineWidth=3; g.strokeStyle='#e9b3a8'; g.stroke();
+    g.strokeStyle='rgba(220,140,130,.7)'; g.lineWidth=7; for(const y of [236,256,276]){ g.beginPath(); g.moveTo(360,y); g.quadraticCurveTo(470,y-10,560,y+8); g.stroke(); }
+    // 입안 + 목구멍
+    const Lp=rot(272,352); g.beginPath(); g.moveTo(278,322); g.lineTo(640,322); g.lineTo(742,300); g.lineTo(748,500); g.lineTo(620,490); g.lineTo(Lp[0],Lp[1]); g.lineTo(272,348); g.closePath(); const cg=g.createLinearGradient(270,0,740,0); cg.addColorStop(0,'#a03347'); cg.addColorStop(.6,'#6b1a29'); cg.addColorStop(1,'#4a0f1b'); g.fillStyle=cg; g.fill();
+    g.fillStyle='#4a0f1b'; g.beginPath(); g.moveTo(640,300); g.lineTo(742,296); g.lineTo(742,330); g.lineTo(650,330); g.closePath(); g.fill();
+    // 숨관
+    g.beginPath(); g.moveTo(590,545); g.lineTo(660,515); g.lineTo(684,1500); g.lineTo(612,1500); g.closePath(); g.fillStyle='#d7eef3'; g.fill(); g.lineWidth=4; g.strokeStyle='#8dbfcc'; g.stroke(); for(let y=580;y<1000;y+=38){ g.beginPath(); g.moveTo(597+(y-545)*.023,y); g.lineTo(660+(y-515)*.024,y-12); g.stroke(); }
+    // 식도 (닫혀 있음)
+    g.beginPath(); g.moveTo(676,500); g.lineTo(742,470); g.lineTo(770,1500); g.lineTo(698,1500); g.closePath(); g.fillStyle='#c98a8f'; g.fill(); g.lineWidth=6; g.strokeStyle='#e08a97'; g.beginPath(); g.moveTo(742,470); g.lineTo(770,1500); g.stroke(); g.beginPath(); g.moveTo(676,500); g.lineTo(698,1500); g.stroke();
+    // 후두덮개(열림)
+    g.save(); g.translate(648,500); g.rotate(-1.25); g.beginPath(); g.moveTo(-6,0); g.quadraticCurveTo(30,-16,66,-4); g.quadraticCurveTo(34,12,-6,6); g.closePath(); g.fillStyle='#f0a9b2'; g.fill(); g.lineWidth=3; g.strokeStyle='#c96f7c'; g.stroke(); g.restore();
+    // 입천장
+    g.beginPath(); g.moveTo(276,300); g.lineTo(560,296); g.quadraticCurveTo(578,297,580,310); g.lineTo(580,324); g.lineTo(280,324); g.closePath(); g.fillStyle=BONE; g.fill(); g.lineWidth=3; g.strokeStyle=BL; g.stroke();
+    g.beginPath(); g.moveTo(575,298); g.bezierCurveTo(622,298,656,330,662,372); g.bezierCurveTo(664,402,646,406,643,388); g.bezierCurveTo(640,360,610,332,575,326); g.closePath(); g.fillStyle='#ea8d9b'; g.fill(); g.strokeStyle='#c96f7c'; g.stroke();
+    g.fillStyle='#ee8fa0'; g.beginPath(); g.roundRect(268,316,290,20,10); g.fill();
+    const molar=(x,y0,y1,w)=>{ const up=y1>y0, rr=9; g.beginPath(); g.moveTo(x-w/2,y0); g.lineTo(x-w/2,y1-(up?rr:-rr)); g.quadraticCurveTo(x-w/2,y1,x-w/2+rr,y1); g.lineTo(x+w/2-rr,y1); g.quadraticCurveTo(x+w/2,y1,x+w/2,y1-(up?rr:-rr)); g.lineTo(x+w/2,y0); g.closePath(); g.fillStyle=TW; g.fill(); g.lineWidth=2.5; g.strokeStyle=TL; g.stroke(); };
+    for(const x of [338,378,424,472,520]) molar(x,330,366,x>400?44:36);
+    g.beginPath(); g.moveTo(268,320); g.bezierCurveTo(262,346,268,372,284,386); g.bezierCurveTo(294,366,296,340,292,320); g.closePath(); g.fillStyle=TW; g.fill(); g.lineWidth=2.5; g.strokeStyle=TL; g.stroke();
+    // 아래턱
+    g.save(); g.translate(hx0,hy0); g.rotate(-th); g.translate(-hx0,-hy0);
+    g.beginPath(); g.moveTo(272,352); g.bezierCurveTo(250,356,240,378,250,398); g.bezierCurveTo(262,420,276,428,274,446); g.bezierCurveTo(262,470,258,505,278,535); g.bezierCurveTo(300,565,360,570,430,592); g.lineTo(620,470); g.lineTo(620,352); g.closePath(); g.fillStyle=SK; g.fill();
+    g.beginPath(); g.moveTo(272,352); g.bezierCurveTo(250,356,240,378,250,398); g.bezierCurveTo(262,420,276,428,274,446); g.bezierCurveTo(262,470,258,505,278,535); g.bezierCurveTo(300,565,360,570,430,592); g.lineWidth=4; g.strokeStyle=SKL; g.stroke();
+    g.beginPath(); g.moveTo(285,352); g.lineTo(624,352); g.lineTo(624,462); g.lineTo(300,440); g.closePath(); g.fillStyle='#8c2a3b'; g.fill();
+    g.beginPath(); g.moveTo(272,352); g.bezierCurveTo(250,356,240,378,250,398); g.bezierCurveTo(264,394,274,374,284,356); g.closePath(); g.fillStyle=LIP; g.fill();
+    g.beginPath(); g.moveTo(292,404); g.lineTo(300,500); g.quadraticCurveTo(312,540,366,534); g.lineTo(586,500); g.lineTo(612,470); g.lineTo(612,440); g.lineTo(330,436); g.lineTo(324,404); g.closePath(); g.fillStyle=BONE; g.fill(); g.lineWidth=3; g.strokeStyle=BL; g.stroke();
+    g.fillStyle='#ee8fa0'; g.beginPath(); g.roundRect(288,398,272,20,10); g.fill();
+    for(const x of [344,384,430,478,526]) molar(x,404,368,x>400?44:36);
+    g.beginPath(); g.moveTo(292,412); g.bezierCurveTo(288,388,292,368,302,356); g.bezierCurveTo(312,372,316,392,314,412); g.closePath(); g.fillStyle=TW; g.fill(); g.lineWidth=2.5; g.strokeStyle=TL; g.stroke();
+    g.beginPath(); g.moveTo(614,452); g.lineTo(332,438); g.bezierCurveTo(300,434,296,416,312,398); g.bezierCurveTo(360,374,400,384,470,382); g.bezierCurveTo(560,380,642,400,648,432); g.lineTo(642,456); g.closePath(); const tgd=g.createLinearGradient(0,360,0,455); tgd.addColorStop(0,'#f594a4'); tgd.addColorStop(1,'#d9566c'); g.fillStyle=tgd; g.fill(); g.lineWidth=3; g.strokeStyle='#b8445a'; g.stroke();
+    g.restore();
+    // 코 막기 (손가락 집게)
+    if(this.mode==='mouth'){ g.save(); g.translate(205,222); g.rotate(-.3); g.fillStyle='#f3c79f'; g.strokeStyle='#c99266'; g.lineWidth=4; g.beginPath(); g.roundRect(-70,-22,90,30,14); g.fill(); g.stroke(); g.beginPath(); g.roundRect(-60,18,82,28,14); g.fill(); g.stroke(); g.restore();
+      g.font='40px sans-serif'; g.fillText('🚫',150,190); }
+    // 공기 알갱이
+    const pts=this.path();
+    if(db>0){ this._acc=(this._acc||0)+db*70; while(this._acc>=1){ this._acc--; const p=this.parts.find(x=>!x.on); if(!p) break; p.on=true; p.u=0; p.o=rnd(-10,10); p.k=0; } }
+    if(db<0){ this._acc2=(this._acc2||0)-db*60; while(this._acc2>=1){ this._acc2--; const p=this.parts.find(x=>!x.on); if(!p) break; p.on=true; p.u=1; p.o=rnd(-10,10); p.k=1; } }
+    for(const p of this.parts){ if(!p.on) continue; if(p.k===0){ p.u+=Math.max(0,db)*1.1+dt*.02; if(p.u>=1) p.on=false; } else { p.u-=Math.max(0,-db)*1.1+dt*.02; if(p.u<=0) p.on=false; }
+      if(!p.on) continue; const [x,y]=this.at(pts,clamp(p.u,0,1)); g.fillStyle=p.k?'rgba(155,108,200,.9)':'rgba(61,139,255,.9)'; g.beginPath(); g.arc(x+p.o*.4,y+p.o*.6,7,0,7); g.fill(); g.strokeStyle='#fff'; g.lineWidth=2; g.stroke(); }
+    // 화살표 길 안내
+    g.setLineDash([10,12]); g.lineDashOffset=-time*40*(this._d||1); g.strokeStyle=this.mode==='nose'?'rgba(61,139,255,.6)':'rgba(255,140,40,.7)'; g.lineWidth=5; g.beginPath(); pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1])); g.stroke(); g.setLineDash([]);
+    // 이름표
+    this.tag(g,'코',150,130,262,232); this.tag(g,'입',140,440,262,345,'#e07585'); this.tag(g,'목구멍',860,380,700,400,'#c2410c'); this.tag(g,'숨관',820,700,640,700,'#2a8aa5'); this.tag(g,'식도',900,560,735,560,'#a05a64');
+    g.setTransform(this.r,0,0,this.r,0,0); g.font='900 20px "Noto Sans KR",sans-serif'; g.textAlign='left'; g.textBaseline='top'; g.fillStyle='#3b2f5c';
+    g.textBaseline='bottom'; g.fillText(this.mode==='nose'?'👃 코 → 목구멍 → 숨관 → (숨관가지 → 폐)':'👄 입 → 목구멍 → 숨관 → (숨관가지 → 폐)',16,H-14);
+  }
+}
+
+/* ==================================================================
+   호흡기관 모형 장면 (주름 빨대 · 종이봉투 · 셀로판테이프)
+================================================================== */
+const SR=.0036, LONG=.17, BEL=.02, SHORT=.045, BAG_L=.13, BAG_W=.088;
+function makeStraw(mat,belM,sign){ const g=new THREE.Group();
+  const long=new THREE.Mesh(new THREE.CylinderGeometry(SR,SR,LONG,18,1,true),mat); long.rotation.x=Math.PI/2; long.position.z=-LONG/2; g.add(long);
+  const prof=[]; for(let i=0;i<=40;i++){ const t=i/40; prof.push(new THREE.Vector2(SR+.0008*Math.abs(Math.sin(t*Math.PI*9)),t*BEL)); }
+  const bel=new THREE.Mesh(new THREE.LatheGeometry(prof,18),belM); bel.rotation.x=Math.PI/2; g.add(bel);
+  const piv=new THREE.Group(); piv.position.z=BEL; g.add(piv); const joint=new THREE.Mesh(new THREE.SphereGeometry(SR*1.12,14,10),belM); piv.add(joint);
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(SR,SR,SHORT,18,1,true),mat); sh.rotation.x=Math.PI/2; sh.position.z=SHORT/2; piv.add(sh);
+  const hm=new THREE.MeshBasicMaterial({visible:false});
+  const hl=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,LONG,8),hm); hl.rotation.x=Math.PI/2; hl.position.z=-LONG/2; g.add(hl);
+  const hs=new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,SHORT+.02,8),hm); hs.rotation.x=Math.PI/2; hs.position.z=SHORT/2; piv.add(hs);
+  g.userData={long,bel,piv,sh,sign,hl,hs}; return g; }
+class Bag{
+  constructor(){ this.geo=new THREE.BoxGeometry(1,1,1,12,2,16); this.base=Float32Array.from(this.geo.attributes.position.array);
+    this.mat=new THREE.MeshStandardMaterial({map:TEX.kraft,roughness:.9,side:THREE.DoubleSide,emissive:'#ffd23f',emissiveIntensity:0});
+    this.mesh=new THREE.Mesh(this.geo,this.mat); this.inf=0; this.cinch=0; this.update(); }
+  update(){ const P=this.geo.attributes.position, B=this.base, inf=this.inf, ci=this.cinch;
+    for(let i=0;i<P.count;i++){ const bx=B[i*3],by=B[i*3+1],bz=B[i*3+2]; const zn=bz+.5; // 0=입구, 1=바닥
+      const neck=lerp(lerp(1,.16,ci),1,ss(0,.24,zn)), pil=Math.pow(Math.max(0,Math.cos(bx*Math.PI)),.55)*Math.pow(Math.sin(Math.PI*clamp(zn*1.04+.02,0,1)),.45);
+      const n=(hash(i*3.1)-.5), crink=(1-inf*.75)*.0018*n;
+      const ht=.0022+inf*.05*pil*(.4+.6*ss(.08,.45,zn))*lerp(1,.4,ci*(1-ss(0,.24,zn)));
+      const xs=BAG_W*neck*(1-.09*inf*Math.pow(Math.abs(bx*2),3)*ss(.1,.5,zn));
+      P.setXYZ(i,bx*xs+crink*.6,by*2*ht+crink*(by===0?1:.5),zn*BAG_L+(zn>.98?-.004*inf:0)); }
+    P.needsUpdate=true; this.geo.computeVertexNormals(); this.geo.computeBoundingSphere(); }
+}
+function tapeMat(){ return new THREE.MeshPhysicalMaterial({color:'#ffffff',roughness:.15,transparent:true,opacity:.55,clearcoat:1,side:THREE.DoubleSide,depthWrite:false}); }
+const MSTEPS=[
+  {g:'1. 주름 빨대 두 개의 긴 쪽을 셀로판테이프로 감아요.'},
+  {k:'pair',t:'파란 주름 빨대를 끌어서 다른 빨대 옆에 나란히 붙여요.',hud:'👉 오른쪽 빨대를 끌어서 왼쪽 빨대 옆에 붙여요'},
+  {k:'tapeL',t:'셀로판테이프를 끌어서 빨대의 긴 쪽 위를 왔다 갔다 문질러 감아요. (3군데)',hud:'🩹 테이프를 노란 자리 위에서 좌우로 문질러 감아요'},
+  {g:'2. 짧은 쪽을 각각 종이봉투 안쪽에 넣고 테이프로 감아요.'},
+  {k:'bend',t:'빨대의 짧은 쪽 끝을 바깥쪽으로 끌어서 구부려요. (양쪽)',hud:'↔️ 빨대 짧은 쪽 끝을 바깥쪽으로 끌어 구부려요'},
+  {k:'bag',t:'종이봉투를 끌어서 구부린 빨대 끝에 끼워요. (2개)',hud:'🛍️ 종이봉투를 끌어서 빨대 끝에 끼워요'},
+  {k:'tapeB',t:'봉투 입구를 테이프로 문질러 감아 공기가 새지 않게 막아요. (2개)',hud:'🩹 봉투 입구 위에서 테이프를 좌우로 문질러요'},
+  {g:'3. 호흡기관 붙임딱지를 각 기관의 위치에 맞게 붙여요.'},
+  {k:'sticker',t:'붙임딱지를 끌어서 알맞은 자리에 붙여요.',hud:'🏷️ 아래 붙임딱지를 알맞은 자리에 붙여요'},
+];
+const STK=[['숨관','trachea'],['숨관가지','bL'],['숨관가지','bR'],['폐','pL'],['폐','pR']];
+class ModelScene extends Stage{
+  constructor(){
+    super({fov:30,fit:{c:V3(0,0,.045),w:.6,h:.52},dir:V3(0,1,.5),envI:.8});
+    this.FIT_BUILD=this.fit; this.FIT_BLOW={c:V3(0,.2,0),w:.34,h:.42,dir:V3(0,.12,1)};
+    this.controls.enableRotate=true; this.controls.maxPolarAngle=1.45;
+    const mat=new THREE.Mesh(new THREE.PlaneGeometry(.72,.56),new THREE.MeshStandardMaterial({map:TEX.mat,roughness:.9})); mat.rotation.x=-Math.PI/2; mat.position.set(0,.0005,.045); this.mat=mat; this.scene.add(mat);
+    const desk=new THREE.Mesh(new THREE.PlaneGeometry(3,3),new THREE.MeshStandardMaterial({map:TEX.wood,roughness:.75})); desk.rotation.x=-Math.PI/2; this.scene.add(desk);
+    const sm=new THREE.MeshPhysicalMaterial({color:'#7fd0ee',roughness:.25,transparent:true,opacity:.86,clearcoat:.8,emissive:'#ffd23f',emissiveIntensity:0}), sbm=sm.clone();
+    this.sm=sm;
+    this.model=new THREE.Group(); this.scene.add(this.model);
+    this.A=makeStraw(sm,sbm,-1); this.B=makeStraw(sm.clone(),sbm.clone(),1); this.model.add(this.A,this.B);
+    this.bags=[new Bag(),new Bag()]; this.bags.forEach(b=>this.model.add(b.mesh));
+    /* 테이프 */
+    this.tapeRoll=new THREE.Group(); const rollM=tapeMat(); rollM.opacity=.75;
+    const outer=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.019,40,1,true),rollM); this.tapeRoll.add(outer);
+    const core=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.02,32,1,true),new THREE.MeshStandardMaterial({color:'#e9dcc0',roughness:.8,side:THREE.DoubleSide})); this.tapeRoll.add(core);
+    const rim=new THREE.Mesh(new THREE.RingGeometry(.02,.03,40),rollM); rim.rotation.x=-Math.PI/2; rim.position.y=.0095; this.tapeRoll.add(rim);
+    const th=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.03,16),new THREE.MeshBasicMaterial({visible:false})); this.tapeRoll.add(th);
+    this.scene.add(this.tapeRoll);
+    this.bands=[]; // {mesh, k, target}
+    this.drops=[]; // 붙임딱지 3D
+    /* 공기 알갱이 */
+    this.NP=90; this.parts=[...Array(this.NP)].map(()=>({on:false,u:0,s:0,o:V3()}));
+    this.pm=new THREE.InstancedMesh(new THREE.SphereGeometry(1,8,6),new THREE.MeshBasicMaterial({color:'#5aa9ff',transparent:true,opacity:.85,depthTest:false}),this.NP); this.pm.frustumCulled=false; this.pm.renderOrder=20; this.model.add(this.pm);
+    /* 안내 이름표 */
+    this.hint=this.addLabel({html:'',cls:'hint',pos:()=>this.hintPos.clone(),dx:0,dy:-60,show:false}); this.hintPos=V3();
+    this.names={trachea:['주름 빨대 (긴 쪽)','숨관'],bL:['짧은 빨대','숨관가지'],pL:['종이봉투','폐']}; this.cmp=false;
+    this.LB={}; this.stkZones={};
+    this.addTool('↺ 처음 시점',()=>this.tweenFit(this.fit));
+    this.parent=this; this.blowing=false; this.inf=0; this.mode='build';
+    this.reset();
+    this.drag=null;
+    this.dragStart=e=>this.dStart(e); this.dragMove=e=>this.dMove(e); this.dragEnd=e=>this.dEnd(e);
+    this.hover=e=>{ const h=this.pickPart(e); this.canvas.style.cursor=h?'grab':''; };
+  }
+  _pd(e){ ac(); if(this.dragStart&&this.dragStart(e)){ this.dragging=true; this.controls.enabled=false; try{this.canvas.setPointerCapture(e.pointerId);}catch(_){} } }
+  _pm(e){ if(this.dragging){ this.dragMove(e); return; } if(e.pointerType==='mouse'&&e.buttons===0&&this.hover) this.hover(e); }
+  _pu(e){ if(this.dragging){ this.dragging=false; this.controls.enabled=true; this.dragEnd(e); } }
+  tp(e,y=.006){ const b=this.canvas.getBoundingClientRect(); this.ndc.set((e.clientX-b.left)/b.width*2-1,-(e.clientY-b.top)/b.height*2+1); this.ray.setFromCamera(this.ndc,this.camera); const p=V3(); return this.ray.ray.intersectPlane(new THREE.Plane(V3(0,1,0),-y),p)?p:null; }
+  reset(){ const A=this.A,B=this.B; this.k=1; this.upright=0; this.model.rotation.set(0,0,0); this.model.position.set(0,0,0);
+    A.position.set(-SR,SR,0); A.rotation.set(0,0,0); B.position.set(.12,SR,-.03); B.rotation.set(0,-.35,0); A.userData.ang=0; B.userData.ang=0; A.userData.piv.rotation.y=0; B.userData.piv.rotation.y=0;
+    this.bags.forEach((b,i)=>{ b.inf=0; b.cinch=0; b.update(); b.on=false; b.mesh.position.set(i?.14:-.15,.0022,i?.12:.13); b.mesh.rotation.set(0,i?-.5:.45,0); });
+    this.bands.forEach(b=>this.model.remove(b.mesh)); this.bands=[];
+    this.drops.forEach(d=>this.model.remove(d)); this.drops=[]; this.stkDone={};
+    this.tapeRoll.position.set(.17,.0095,-.06); this.tapeRoll.visible=true; this.tapeRoll.rotation.set(0,0,0);
+    this.prog={tapeL:[0,0,0],tapeB:[0,0]}; this.inf=0; this.setHint(); this.onStep&&this.onStep(this.k); }
+  cur(){ return MSTEPS[this.k]; }
+  done(){ return this.k>=MSTEPS.length; }
+  tipPos(S){ const s=S.userData.sign, a=S.userData.ang; return V3(S.position.x+s*Math.sin(a)*SHORT,SR,S.position.z+BEL+Math.cos(a)*SHORT); }
+  bagTarget(i){ const S=i?this.B:this.A, s=S.userData.sign, a=S.userData.ang; const dir=V3(s*Math.sin(a),0,Math.cos(a)); const p=this.tipPos(S).addScaledVector(dir,-.022); p.y=.0022; return {p,ry:s*a}; }
+  bandSpots(){ return [-.14,-.08,-.02].map(z=>V3(0,SR,z)); }
+  neckSpot(i){ const t=this.bagTarget(i); const S=i?this.B:this.A, s=S.userData.sign, a=S.userData.ang; return t.p.clone().add(V3(s*Math.sin(a),0,Math.cos(a)).multiplyScalar(.012)).setY(SR); }
+  setHint(){ const st=this.cur(); this.hint.show=!!st&&this.mode==='build'; if(!st) return; const k=st.k;
+    if(this.stickerMode) this.stickerMode(k==='sticker');
+    let txt='',p=V3();
+    if(k==='pair'){ txt='👆 끌어서 옆에 붙여요'; p=this.B.position.clone().add(V3(0,0,-.07)); }
+    if(k==='tapeL'){ const i=this.prog.tapeL.findIndex(v=>v<1); p=this.bandSpots()[Math.max(0,i)]; txt=`🩹 여기서 좌우로 문질러요 (${Math.max(0,i)+1}/3)`; }
+    if(k==='bend'){ const S=this.A.userData.ang<.7?this.A:this.B; p=this.tipPos(S); txt='↔️ 바깥쪽으로 끌어 구부려요'; }
+    if(k==='bag'){ const i=this.bags[0].on?1:0; p=this.bags[i].mesh.position.clone().add(V3(0,0,.06)); txt='🛍️ 끌어서 빨대 끝에 끼워요'; }
+    if(k==='tapeB'){ const i=this.prog.tapeB[0]<1?0:1; p=this.neckSpot(i); txt='🩹 봉투 입구를 문질러 감아요'; }
+    if(k==='sticker'){ this.hint.show=false; }
+    this.hintPos.copy(p); this.hint.set(txt); this.setHud(`<span class="chip">${st.hud||''}</span>`); }
+  pickPart(e){ if(this.mode!=='build'||this.done()) return null; const k=this.cur().k; let objs=[];
+    if(k==='pair') objs=[this.B.userData.hl,this.B.userData.hs];
+    if(k==='tapeL'||k==='tapeB') objs=[...this.tapeRoll.children];
+    if(k==='bend') objs=[this.A.userData.hs,this.B.userData.hs];
+    if(k==='bag') objs=this.bags.filter(b=>!b.on).map(b=>b.mesh);
+    const h=this.pick(e,objs); if(!h) return null; return h.object; }
+  dStart(e){ const o=this.pickPart(e); if(!o) return false; const k=this.cur().k; const p=this.tp(e); if(!p) return false;
+    if(k==='pair') this.drag={k,off:this.B.position.clone().sub(p)};
+    else if(k==='tapeL'||k==='tapeB') this.drag={k,last:p.clone(),off:this.tapeRoll.position.clone().sub(p).setY(0)};
+    else if(k==='bend') this.drag={k,S:o===this.A.userData.hs?this.A:this.B};
+    else if(k==='bag'){ const i=this.bags.findIndex(b=>b.mesh===o); this.drag={k,i,off:this.bags[i].mesh.position.clone().sub(p)}; }
+    SFX.tick(); this.hint.show=false; return true; }
+  dMove(e){ const d=this.drag; if(!d) return; const p=this.tp(e); if(!p) return;
+    if(d.k==='pair'){ this.B.position.set(p.x+d.off.x,SR,p.z+d.off.z); const t=1-ss(.02,.08,Math.abs(this.B.position.x-SR)); this.B.rotation.y=lerp(this.B.rotation.y,0,.15+.5*t); }
+    if(d.k==='tapeL'||d.k==='tapeB'){ const np=p.clone().add(d.off); this.tapeRoll.position.set(np.x,.0095+.012,np.z); const mv=Math.abs(np.x-d.last.x)+Math.abs(np.z-d.last.z)*.4; d.last=np;
+      if(d.k==='tapeL'){ const i=this.prog.tapeL.findIndex(v=>v<1); if(i>=0){ const sp=this.bandSpots()[i]; if(Math.abs(np.z-sp.z)<.03&&Math.abs(np.x)<.06){ this.prog.tapeL[i]=Math.min(1,this.prog.tapeL[i]+mv*5.5); this.band('L'+i,sp,true,this.prog.tapeL[i]); if(Math.random()<.25) SFX.tape(); if(this.prog.tapeL[i]>=1){ SFX.snap(); this.setHint(); this.hint.show=false; } } } }
+      else { const i=this.prog.tapeB.findIndex(v=>v<1); if(i>=0){ const sp=this.neckSpot(i); if(np.distanceTo(V3(sp.x,np.y,sp.z))<.045){ this.prog.tapeB[i]=Math.min(1,this.prog.tapeB[i]+mv*6); const b=this.bags[i]; b.cinch=this.prog.tapeB[i]; b.update(); this.band('B'+i,sp,false,this.prog.tapeB[i],i); if(Math.random()<.25) SFX.tape(); if(this.prog.tapeB[i]>=1){ SFX.snap(); } } } } }
+    if(d.k==='bend'){ const S=d.S, s=S.userData.sign; const j=V3(S.position.x,0,S.position.z+BEL); const dx=(p.x-j.x)*s, dz=p.z-j.z; const a=clamp(Math.atan2(dx,dz),0,1.15); S.userData.ang=a; S.userData.piv.rotation.y=s*a; }
+    if(d.k==='bag'){ const m=this.bags[d.i].mesh; m.position.set(p.x+d.off.x,.0022,p.z+d.off.z); const t=this.bagTarget(d.i); const near=1-ss(.02,.09,m.position.distanceTo(t.p)); m.rotation.y=lerp(m.rotation.y,t.ry,.1+.6*near); } }
+  dEnd(){ const d=this.drag; this.drag=null; if(!d) return;
+    if(d.k==='pair'){ const ok=Math.abs(this.B.position.x-SR)<.03&&Math.abs(this.B.position.z)<.04; if(ok){ this.tween(this.B.position,V3(SR,SR,0),()=>{ this.B.rotation.y=0; SFX.snap(); this.next(); }); } else { SFX.no(); this.parent.toast('조금 더 가까이! 왼쪽 빨대 바로 옆에 나란히 놓아요'); } }
+    if(d.k==='tapeL'){ this.tapeRoll.position.y=.0095; if(this.prog.tapeL.every(v=>v>=1)) this.next(); else this.setHint(); }
+    if(d.k==='bend'){ const S=d.S; if(S.userData.ang>.6){ S.userData.ang=1.0; S.userData.piv.rotation.y=S.userData.sign*1.0; SFX.snap(); } else this.parent.toast('조금 더 바깥쪽으로 구부려요');
+      if(this.A.userData.ang>.6&&this.B.userData.ang>.6) this.next(); else this.setHint(); }
+    if(d.k==='bag'){ const m=this.bags[d.i].mesh, t=this.bagTarget(d.i); if(m.position.distanceTo(t.p)<.06){ this.tween(m.position,t.p,()=>{ m.rotation.y=t.ry; this.bags[d.i].on=true; SFX.crinkle(); if(this.bags.every(b=>b.on)) this.next(); else this.setHint(); }); } else { SFX.no(); this.parent.toast('봉투 입구를 빨대 끝 쪽으로 가져가요'); } }
+    if(d.k==='tapeB'){ this.tapeRoll.position.y=.0095; if(this.prog.tapeB.every(v=>v>=1)) this.next(); else this.setHint(); } }
+  band(id,p,isLong,f,bi){ let b=this.bands.find(x=>x.id===id); const th=Math.max(.05,f)*Math.PI*2;
+    const geo=new THREE.CylinderGeometry(1,1,1,40,1,true,0,th); if(!b){ b={id,mesh:new THREE.Mesh(geo,tapeMat())}; this.bands.push(b); this.model.add(b.mesh); } else { b.mesh.geometry.dispose(); b.mesh.geometry=geo; }
+    const m=b.mesh; m.rotation.set(Math.PI/2,0,0);
+    if(isLong){ m.position.copy(p); m.scale.set(SR*2.25,.022,SR*1.25); }
+    else { const S=bi?this.B:this.A, s=S.userData.sign, a=S.userData.ang; m.position.copy(p).setY(.0028); m.rotation.set(Math.PI/2,0,-s*a); m.scale.set(.0105,.018,.0052); } }
+  tween(v,to,cb){ const from=v.clone(), t0=performance.now(); const run=()=>{ const k=clamp((performance.now()-t0)/260,0,1); v.lerpVectors(from,to,ease(k)); if(k<1) requestAnimationFrame(run); else cb&&cb(); }; run(); }
+  next(){ this.k++; while(this.cur()&&this.cur().g) this.k++; if(this.done()){ this.tapeRoll.visible=false; SFX.yay(); this.parent.toast('🎉 호흡기관 모형 완성!',2600); }
+    this.tapeRoll.visible=false;
+    if(this.cur()&&(this.cur().k==='tapeL'||this.cur().k==='tapeB')){ this.tapeRoll.visible=true; this.tapeRoll.position.set(.17,.0095,this.cur().k==='tapeL'?-.06:.17); }
+    this.setHint(); this.onStep&&this.onStep(this.k); }
+  skip(){ if(this.done()) return; const k=this.cur().k;
+    if(k==='pair'){ this.B.position.set(SR,SR,0); this.B.rotation.y=0; }
+    if(k==='tapeL'){ this.bandSpots().forEach((sp,i)=>{ this.prog.tapeL[i]=1; this.band('L'+i,sp,true,1); }); }
+    if(k==='bend'){ for(const S of [this.A,this.B]){ S.userData.ang=1.0; S.userData.piv.rotation.y=S.userData.sign*1.0; } }
+    if(k==='bag'){ this.bags.forEach((b,i)=>{ const t=this.bagTarget(i); b.mesh.position.copy(t.p); b.mesh.rotation.y=t.ry; b.on=true; }); }
+    if(k==='tapeB'){ this.bags.forEach((b,i)=>{ this.prog.tapeB[i]=1; b.cinch=1; b.update(); this.band('B'+i,this.neckSpot(i),false,1,i); }); }
+    if(k==='sticker'){ STK.forEach(([n,z])=>this.placeSticker(n,z)); }
+    SFX.snap(); this.next(); }
+  completeAll(){ if(this.k<=1&&!this.done()) this.reset(); let guard=0; while(!this.done()&&guard++<20) this.skip(); }
+  zonePos(z){ const A=this.A,B=this.B; if(z==='trachea') return V3(0,SR*2,-.11); if(z==='bL') return this.tipPos(A).lerp(V3(A.position.x,SR,A.position.z+BEL),.5).setY(SR*2); if(z==='bR') return this.tipPos(B).lerp(V3(B.position.x,SR,B.position.z+BEL),.5).setY(SR*2);
+    const i=z==='pL'?0:1, m=this.bags[i].mesh; return m.localToWorld(V3(0,.004+.046*this.bags[i].inf,BAG_L*.62)); }
+  placeSticker(n,z){ if(this.stkDone[z]) return; this.stkDone[z]=true; const round=n==='폐'; const m=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:stickerTex(n,round),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));
+    m.renderOrder=6; m.userData.z=z; if(round){ m.scale.setScalar(.036); const i=z==='pL'?0:1; this.bags[i].mesh.add(m); m.position.set(0,.0035,BAG_L*.62); m.rotation.set(-Math.PI/2,0,-this.bags[i].mesh.rotation.y); m.userData.bag=i; }
+    else { m.scale.set(n==='숨관'?.05:.042,n==='숨관'?.025:.021,1); m.rotation.x=-Math.PI/2; m.position.copy(this.zonePos(z)).setY(SR*2.2); if(z!=='trachea'){ const S=z==='bL'?this.A:this.B; m.rotation.z=-S.userData.sign*S.userData.ang+(S.userData.sign>0?-Math.PI/2:Math.PI/2); m.scale.set(.048,.024,1); } this.model.add(m); }
+    this.drops.push(m); }
+  setUpright(on,instant){ this.mode=on?'blow':'build'; if(on) this.completeAll(); this.mat.visible=!on; this.hint.show=!on&&!this.done(); this.tapeRoll.visible=!on&&!this.done()&&!!this.cur()&&/tape/.test(this.cur().k);
+    const tgt=on?1:0; if(instant){ this.upright=tgt; this.applyUp(); this.fit=on?this.FIT_BLOW:this.FIT_BUILD; this.fitCam(); } else { this.upGoal=tgt; this.tweenFit(on?this.FIT_BLOW:this.FIT_BUILD); }
+    this.setHud(on?'<span class="chip">😮‍💨 버튼을 꾹 누르면 빨대에 공기를 불어 넣어요</span>':''); if(!on) this.setHint(); this.showNames(on); }
+  applyUp(){ const u=ease(this.upright); this.model.rotation.x=u*Math.PI/2; this.model.position.set(0,u*.245,u*-.02); }
+  showNames(on){ for(const k in this.LB) this.LB[k].show=on; if(on&&!this.LB.trachea){ this.LB.trachea=this.addLabel({html:'',pos:()=>this.model.localToWorld(V3(0,0,-.1)),dx:-130,dy:-10}); this.LB.bL=this.addLabel({html:'',pos:()=>this.model.localToWorld(this.tipPos(this.A).lerp(V3(this.A.position.x,SR,BEL),.5)),dx:-140,dy:10}); this.LB.pL=this.addLabel({html:'',pos:()=>this.bags[0].mesh.localToWorld(V3(0,.01+.03*this.bags[0].inf,BAG_L*.55)),dx:-120,dy:40}); this.setCompare(this.cmp); } }
+  setCompare(v){ this.cmp=v; for(const k in this.LB) this.LB[k].set(v?`${this.names[k][0]}<small>→ 우리 몸의 ${this.names[k][1]}</small>`:this.names[k][0]); }
+  update(dt,T){
+    if(this.upGoal!=null){ const d=this.upGoal-this.upright; this.upright+=Math.sign(d)*Math.min(Math.abs(d),dt*1.2); this.applyUp(); if(Math.abs(d)<1e-3) this.upGoal=null; }
+    if(this.mode==='build'&&!this.done()){ const k=this.cur().k; const gl=.25+.25*Math.sin(T*6);
+      this.B.userData.long.material.emissiveIntensity=k==='pair'?gl:0; [this.A,this.B].forEach(S=>S.userData.sh.material.emissiveIntensity=k==='bend'&&S.userData.ang<.6?gl:0);
+      this.bags.forEach(b=>b.mat.emissiveIntensity=k==='bag'&&!b.on?gl*.5:0);
+      if(this.cur().k!=='sticker'&&!this.drag&&!this.hint.show&&this.mode==='build'){ this.setHint(); }
+      if(this.drag) this.hint.show=false; }
+    else { this.B.userData.long.material.emissiveIntensity=0; [this.A,this.B].forEach(S=>S.userData.sh.material.emissiveIntensity=0); this.bags.forEach(b=>b.mat.emissiveIntensity=0); }
+    /* 공기 불어 넣기 */
+    if(this.mode==='blow'){ const i0=this.inf; if(this.blowing) this.inf=Math.min(1,this.inf+dt*.38*(1-this.inf*.55)); else this.inf=Math.max(0,this.inf-dt*.22);
+      const di=this.inf-i0; this.bags.forEach(b=>{ b.inf=this.inf; b.update(); });
+      if(this.blowing){ this.bt=(this.bt||0)+dt; if(this.bt>5&&!this._warn){ this._warn=true; this.parent.toast('⚠️ 무리하지 말고 잠깐 쉬어요. 어지러우면 멈춰요!',3200); } } else { this.bt=0; this._warn=false; }
+      if(di>0){ this._a=(this._a||0)+di*260; } const out=di<0;
+      if(this.blowing&&this.inf>=1) this._a=(this._a||0)+dt*6;
+      while(this._a>=1){ this._a--; const p=this.parts.find(x=>!x.on); if(!p) break; p.on=true; p.u=out?1:0; p.s=Math.random()<.5?0:1; p.o.set(rnd(-1,1),rnd(-1,1),rnd(-1,1)).multiplyScalar(.0018); p.dir=out?-1:1; }
+      if(out){ this._b=(this._b||0)-di*200; while(this._b>=1){ this._b--; const p=this.parts.find(x=>!x.on); if(!p) break; p.on=true; p.u=1; p.s=Math.random()<.5?0:1; p.o.set(rnd(-1,1),rnd(-1,1),rnd(-1,1)).multiplyScalar(.0018); p.dir=-1; } }
+      this.onBlow&&this.onBlow(this.inf); }
+    this.drops.forEach(d=>{ if(d.userData.bag!=null){ const b=this.bags[d.userData.bag]; d.position.y=.0035+b.inf*.046; } });
+    const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=V3(.0022,.0022,.0022);
+    this.parts.forEach((p,i)=>{ if(p.on){ p.u+=p.dir*dt*.9; if(p.u>1||p.u<-.15) p.on=false; }
+      if(p.on){ const S=p.s?this.B:this.A, s=S.userData.sign, a=S.userData.ang; let P;
+        const tip=this.tipPos(S), j=V3(S.position.x,SR,S.position.z+BEL), top=V3(S.position.x,SR,-LONG);
+        if(p.u<0){ P=top.clone().add(V3(0,0,p.u*.4)); } else if(p.u<.55){ P=top.clone().lerp(j,p.u/.55); } else if(p.u<.75){ P=j.clone().lerp(tip,(p.u-.55)/.2); }
+        else { const dir=V3(s*Math.sin(a),0,Math.cos(a)); const k=(p.u-.75)/.25; P=tip.clone().addScaledVector(dir,k*BAG_L*.6); P.y+=.02*this.inf*Math.sin(k*3+i); P.x+= (hash(i)-.5)*.05*k*this.inf; }
+        P.add(p.o); m4.compose(P,q,sc); } else m4.makeScale(0,0,0); this.pm.setMatrixAt(i,m4); });
+    this.pm.instanceMatrix.needsUpdate=true;
+  }
+}
+
+/* ==================================================================
+   페이지 연결
+================================================================== */
+const SCENES={}; const MAKERS={lung:()=>new LungScene(),model:()=>new ModelScene(),head:()=>new HeadView()};
+const getScene=n=>SCENES[n]||(SCENES[n]=MAKERS[n]());
+let curPage=null, curEl=null;
+const INFO={
+  '코':{look:'얼굴 가운데에 있고, 콧속은 목구멍으로 이어져 있어요.',fn:'<b>공기가 드나드는 곳</b>이에요.',fact:'👃 콧속의 털과 끈끈한 물질이 먼지를 걸러 줘요.'},
+  '숨관':{look:'목에서 가슴까지 이어진 관이에요. 고리 모양의 단단한 연골이 있어 찌그러지지 않아요.',fn:'<b>공기가 이동하는 통로</b>예요.',fact:'💡 목 앞쪽을 살짝 만지면 오돌토돌한 숨관을 느낄 수 있어요.'},
+  '숨관가지':{look:'숨관에서 양쪽 폐로 갈라져 나뭇가지처럼 점점 가늘게 퍼져 있어요.',fn:'<b>숨관과 폐를 연결</b>하며, 공기가 이동하는 통로예요.',fact:'🌳 거꾸로 선 나무처럼 생겨서 ‘가지’라는 이름이 붙었어요.'},
+  '폐':{look:'가슴 양쪽에 하나씩 있고, 갈비뼈가 둘러싸고 있어요. 왼쪽 폐는 심장 자리 때문에 조금 작아요.',fn:'<b>산소를 받아들이고, 이산화 탄소를 몸 밖으로 내보내요.</b>',fact:'🎈 숨을 들이마시면 폐가 부풀고, 내쉬면 작아져요.'}};
+function renderOrg(n){ const el=$('#orgInfo'); if(!el) return; if(!n){ el.innerHTML='<div class="sub">👆 3D 호흡기관을 눌러 보세요!</div><div class="muted">코, 숨관, 숨관가지, 폐를 누르면 생김새와 하는 일을 알려 줘요. 오른쪽 폐는 <b>속이 비쳐 보여서</b> 숨관가지가 보여요.</div>'; return; }
+  const o=INFO[n]; el.innerHTML=`<h3 style="color:#4d3299">${n}</h3><dl><dt>생김새</dt><dd>${o.look}</dd><dt>하는 일</dt><dd>${o.fn}</dd></dl><div class="fact">${o.fact}</div>`; }
+renderOrg(null);
+const PH={1:['🌬️ 숨을 들이마셔요','in','코 → 숨관 → 숨관가지 → 폐','공기가 몸속으로 들어오고 폐가 부풀어요. 폐에서 산소를 받아들여요.'],'-1':['😮‍💨 숨을 내쉬어요','out','폐 → 숨관가지 → 숨관 → 코','이산화 탄소를 포함한 공기가 몸 밖으로 나가고 폐가 작아져요.'],0:['⏸ 잠깐 쉬어요','','','']};
+function bindLung(sc){ sc.onSelect=renderOrg;
+  sc.onPhase=d=>{ if(!curEl) return; const p=PH[d]; const e=curEl.querySelector('[data-phase]'); if(e&&d!==0){ e.className='phase '+p[1]; e.textContent=p[0]; } const c=curEl.querySelector('[data-cur]'); if(c&&d!==0) c.innerHTML=`<h3>${p[0]}</h3><p><b>${p[2]}</b></p><div class="muted" style="margin-top:6px">${p[3]}</div>`; };
+  sc.onState=s=>{ if(!curEl) return; const set=(q,v)=>{ const e=curEl.querySelector(q); if(e&&e.textContent!==v) e.textContent=v; };
+    set('[data-o2]',String(s.o2)); set('[data-co2]',String(s.co2)); set('[data-m=air]',Math.round(s.b*100)+'%'); set('[data-m=chest]',s.b>.6?'커졌어요':s.b<.2?'보통':'커지는 중');
+    const a=curEl.querySelector('[data-b=air]'); if(a) a.style.width=(s.b*100)+'%'; const c=curEl.querySelector('[data-b=chest]'); if(c) c.style.width=(30+s.b*70)+'%'; };
+  const c=curEl.querySelector('[data-cur]'); if(c) c.innerHTML='<h3>🌬️ 공기 따라가기</h3><p>🔵 파란 알갱이는 <b>산소</b>가 많은 공기, 🟣 보라 알갱이는 <b>이산화 탄소</b>를 포함한 공기예요.</p>'; }
+
+/* 이름 붙이기 */
+let zones=null, picked=null;
+function setupLabel(sc){ if(!zones){ zones={}; for(const k of Object.keys(sc.anchors)){ const L=sc.addLabel({html:'?',cls:'zone',pos:sc.anchors[k],dx:sc.L[k].dx,dy:sc.L[k].dy}); L.el.dataset.n=k; zones[k]=L; L.el.addEventListener('click',()=>{ if(picked) tryDrop(picked,k); }); } }
+  for(const k in zones) zones[k].show=true; if(!$('#tray').children.length) buildTray(); }
+function hideZones(){ if(zones) for(const k in zones) zones[k].show=false; }
+function buildTray(){ const t=$('#tray'); t.innerHTML=''; ['코','숨관','숨관가지','폐','심장','위'].sort(()=>Math.random()-.5).forEach(n=>{ const c=document.createElement('div'); c.className='nchip'; c.textContent=n; c.dataset.n=n; t.appendChild(c); dragChip(c,(el,x,y)=>zoneAt(x,y),(el,z)=>tryDrop(el,z.dataset.n)); }); $('#trayFb').textContent=''; }
+function dragChip(c,find,drop){ let gh=null, sx=0, sy=0, moved=false;
+  c.addEventListener('pointerdown',e=>{ ac(); sx=e.clientX; sy=e.clientY; moved=false; try{ c.setPointerCapture(e.pointerId); }catch(_){}
+    c._mv=ev=>{ if(!moved&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>6){ moved=true; gh=c.cloneNode(true); gh.classList.add('ghost'); document.body.appendChild(gh); }
+      if(gh){ gh.style.left=ev.clientX+'px'; gh.style.top=ev.clientY+'px'; const z=find(c,ev.clientX,ev.clientY); $$('.zone,.stk').forEach(x=>x.classList.toggle('hot',x===z)); } };
+    c.addEventListener('pointermove',c._mv); });
+  c.addEventListener('pointerup',e=>{ c.removeEventListener('pointermove',c._mv); if(gh){ gh.remove(); gh=null; const z=find(c,e.clientX,e.clientY); $$('.zone,.stk').forEach(x=>x.classList.remove('hot')); if(z) drop(c,z); }
+    else if(!moved){ $$('.nchip').forEach(x=>x.classList.toggle('pick',x===c&&!c.classList.contains('pick'))); picked=c.classList.contains('pick')?c:null; } });
+  c.addEventListener('pointercancel',()=>{ c.removeEventListener('pointermove',c._mv); if(gh){ gh.remove(); gh=null; } }); }
+function zoneAt(x,y){ return document.elementsFromPoint(x,y).find(e=>e.classList&&e.classList.contains('zone')&&!e.classList.contains('ok'))||null; }
+function tryDrop(c,k){ const Z=zones[k]; if(!Z||Z.el.classList.contains('ok')) return; picked=null; $$('.nchip').forEach(x=>x.classList.remove('pick'));
+  if(c.dataset.n===k){ Z.set(k); Z.el.classList.add('ok'); c.classList.add('used'); SFX.ok(); const sc=getScene('lung'); sc.highlight(k); setTimeout(()=>sc.highlight(null),900);
+    if(Object.values(zones).every(z=>z.el.classList.contains('ok'))){ const fb=$('#trayFb'); fb.className='fb ok'; fb.innerHTML='🎉 모두 맞혔어요! 호흡기관에는 코, 숨관, 숨관가지, 폐가 있어요. <button class="btn" style="padding:6px 10px;font-size:14px" id="trayAgain">다시 하기</button>'; SFX.yay(); $('#trayAgain').onclick=()=>{ for(const n in zones){ zones[n].set('?'); zones[n].el.classList.remove('ok'); } buildTray(); }; } }
+  else { Z.el.classList.add('bad'); setTimeout(()=>Z.el.classList.remove('bad'),400); SFX.no(); const fb=$('#trayFb'); fb.className='fb no'; fb.textContent=['심장','위'].includes(c.dataset.n)?`‘${c.dataset.n}’는 호흡기관이 아니에요!`:`앗, 그곳은 ‘${c.dataset.n}’가 아니에요. 다시 해 봐요!`; } }
+
+/* 모형 만들기 단계 목록 + 붙임딱지 */
+function renderSteps(k){ $('#stepList').innerHTML=MSTEPS.map((s,i)=>s.g?`<div class="grp">${s.g}</div>`:`<div class="a ${i<k?'done':i===k?'now':''}"><div class="n">${i<k?'✓':MSTEPS.slice(0,i+1).filter(x=>!x.g).length}</div><div>${s.t}${s.k==='sticker'&&i===k?'<div class="muted" style="margin-top:4px">👈 3D 화면 아래쪽의 붙임딱지를 끌어요</div><div class="fb" id="stkFb"></div>':''}</div></div>`).join('');
+  $('#mdlDone').hidden=k<MSTEPS.length; if(MSTEPS[k]&&MSTEPS[k].k==='sticker') buildStickers(); }
+let stkZones={};
+function stickerZones(sc,on){ if(!sc.stkLabels){ sc.stkLabels={}; for(const [n,z] of STK){ const L=sc.addLabel({html:'붙임딱지',cls:'stk',pos:()=>sc.zonePos(z),dx:z==='trachea'?-120:z[1]==='L'?-110:110,dy:z[0]==='p'?50:z==='trachea'?-30:0,show:false}); L.el.dataset.z=z; L.el.dataset.n=n; sc.stkLabels[z]=L; L.el.addEventListener('click',()=>{ if(picked) dropSticker(picked,L.el); }); } }
+  for(const z in sc.stkLabels) sc.stkLabels[z].show=on&&!sc.stkDone[z];
+  if(!sc.stkBar){ sc.stkBar=document.createElement('div'); sc.stkBar.className='stkbar'; sc.root.appendChild(sc.stkBar); }
+  sc.stkBar.hidden=!on; }
+function buildStickers(){ const sc=getScene('model'); if(!sc.stkBar) stickerZones(sc,true); const t=sc.stkBar; t.innerHTML='<b>🏷️ 붙임딱지</b>'; STK.forEach(([n],i)=>{ const c=document.createElement('div'); c.className='nchip'; c.textContent=n; c.dataset.n=n; c.style.background='#fffdf7'; t.appendChild(c);
+  dragChip(c,(el,x,y)=>document.elementsFromPoint(x,y).find(e=>e.classList&&e.classList.contains('stk'))||null,(el,z)=>dropSticker(el,z)); }); }
+function dropSticker(c,zEl){ const sc=getScene('model'); picked=null; $$('.nchip').forEach(x=>x.classList.remove('pick')); const z=zEl.dataset.z;
+  if(sc.stkDone[z]) return; const fb0=$('#stkFb'); if(fb0) fb0.textContent=''; if(c.dataset.n===zEl.dataset.n){ sc.placeSticker(c.dataset.n,z); c.classList.add('used'); sc.stkLabels[z].show=false; SFX.snap();
+    if(STK.every(([,zz])=>sc.stkDone[zz])){ sc.next(); } }
+  else { zEl.classList.add('bad'); setTimeout(()=>zEl.classList.remove('bad'),400); SFX.no(); const fb=$('#stkFb'); if(fb){ fb.className='fb no'; fb.textContent=`그 자리는 ‘${c.dataset.n}’가 아니에요. 모형의 어느 부분이 무엇과 닮았는지 생각해 봐요!`; } } }
+function bindModel(sc,id){ sc.parent=sc; sc.onStep=k=>{ if(curPage==='lab-3'){ renderSteps(k); stickerZones(sc,MSTEPS[k]&&MSTEPS[k].k==='sticker'); } };
+  sc.stickerMode=on=>stickerZones(sc,on&&curPage==='lab-3');
+  sc.onBlow=f=>{ const e=curEl&&curEl.querySelector('[data-m=bag]'); if(e) e.textContent=Math.round(f*100)+'%'; const b=curEl&&curEl.querySelector('[data-b=bag]'); if(b) b.style.width=(f*100)+'%'; };
+  if(id==='lab-3'){ sc.setUpright(false,true); renderSteps(sc.k); stickerZones(sc,MSTEPS[sc.k]&&MSTEPS[sc.k].k==='sticker'); }
+  else { stickerZones(sc,false); sc.setUpright(true,!sc._wasUp); sc._wasUp=true; } }
+$('#mdlReset').onclick=()=>{ const sc=getScene('model'); sc.reset(); renderSteps(sc.k); stickerZones(sc,false); SFX.tick(); };
+$('#mdlSkip').onclick=()=>{ const sc=getScene('model'); sc.skip(); stickerZones(sc,MSTEPS[sc.k]&&MSTEPS[sc.k].k==='sticker'); };
+
+/* 버튼 꾹 누르기 */
+function holdBtn(el,on,off){ el.addEventListener('pointerdown',e=>{ e.preventDefault(); ac(); try{ el.setPointerCapture(e.pointerId); }catch(_){} el.classList.add('down'); on(); });
+  const up=()=>{ if(!el.classList.contains('down')) return; el.classList.remove('down'); off(); }; el.addEventListener('pointerup',up); el.addEventListener('pointercancel',up); el.addEventListener('contextmenu',e=>e.preventDefault()); }
+$$('[data-hold=in]').forEach(b=>holdBtn(b,()=>{ const s=getScene('lung'); s.auto=false; s.held=true; },()=>{ getScene('lung').held=false; }));
+holdBtn($('#blowBtn'),()=>{ getScene('model').blowing=true; breathSound(true,false); },()=>{ getScene('model').blowing=false; breathSound(false); });
+holdBtn($('#hvHold'),()=>{ const h=getScene('head'); h._hb=true; h.held=true; },()=>{ const h=getScene('head'); h._hb=false; h.held=false; });
+$$('#hvMode button').forEach(b=>b.onclick=()=>{ $$('#hvMode button').forEach(x=>x.classList.toggle('on',x===b)); const h=getScene('head'); h.mode=b.dataset.m; h.parts.forEach(p=>p.on=false); h.toast(b.dataset.m==='mouth'?'🤧 코가 막혀도 입으로 들이마신 공기가 목구멍에서 숨관으로 들어가요!':'👃 코로 들이마신 공기가 목구멍을 지나 숨관으로 들어가요',2800); SFX.tick(); });
+/* 마이크로 불기 */
+let micOn=false, micStream=null, micTimer=null;
+$('#micBtn').onclick=async e=>{ const b=e.currentTarget; if(micOn){ micOn=false; b.classList.remove('on'); clearInterval(micTimer); micStream&&micStream.getTracks().forEach(t=>t.stop()); getScene('model').blowing=false; return; }
+  try{ micStream=await navigator.mediaDevices.getUserMedia({audio:true}); const a=ac()||new (window.AudioContext||window.webkitAudioContext)(); const src=a.createMediaStreamSource(micStream); const an=a.createAnalyser(); an.fftSize=1024; src.connect(an); const buf=new Float32Array(an.fftSize);
+    micOn=true; b.classList.add('on'); b.textContent='🎤 마이크 켜짐 — 태블릿에 후~ 불어 보세요 (다시 누르면 꺼져요)';
+    micTimer=setInterval(()=>{ an.getFloatTimeDomainData(buf); let s=0; for(const v of buf) s+=v*v; const rms=Math.sqrt(s/buf.length); getScene('model').blowing=rms>.06; },60); }
+  catch(err){ getScene('model').toast('마이크를 쓸 수 없어요. 아래 버튼을 꾹 눌러 불어 보세요.'); } };
+
+function showPage(id,push=true){
+  const page=$(`.page[data-id="${id}"]`); if(!page) return; const view=id.split('-')[0];
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.view===view));
+  $$('.view').forEach(v=>v.classList.toggle('on',v.dataset.view===view));
+  $$('.step').forEach(s=>s.classList.toggle('on',s.dataset.go===id));
+  $$('.page').forEach(p=>p.classList.toggle('on',p===page));
+  curPage=id; curEl=page;
+  const stEl=page.querySelector('.stage'); const sn=stEl.dataset.scene;
+  for(const k in SCENES) if(k!==sn) SCENES[k].stop(); breathSound(false);
+  let sc; try{ sc=getScene(sn); }catch(err){ stEl.innerHTML='<div class="boot">3D 화면을 열 수 없어요 😢 (WebGL 지원 브라우저가 필요해요)</div>'; console.error(err); return; }
+  sc.mount(stEl);
+  if(sn==='lung'){ bindLung(sc); hideZones(); const mode={'book-1':'explore','book-2':'sim','lab-1':'label','lab-2':'feel','lab-5':'path'}[id]; sc.setMode(mode); if(mode==='label') setupLabel(sc);
+    if(id==='book-2'){ $$('[data-bmode] button',page).forEach(b=>b.classList.toggle('on',b.dataset.m==='auto')); $('[data-handrow]',page).hidden=true; $('[data-handtip]',page).hidden=true; } }
+  if(sn==='model') bindModel(sc,id);
+  if(push){ try{ history.replaceState(null,'','#'+id); }catch(_){ } }
+  window.scrollTo({top:0});
+}
+window.addEventListener('hashchange',()=>{ const h=location.hash.slice(1); if(h&&h!==curPage) showPage(h,false); });
+
+/* ---------- 이벤트 ---------- */
+document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g){ SFX.tick(); showPage(g.dataset.go); } });
+$$('.tab').forEach(t=>t.onclick=()=>{ SFX.tick(); showPage(t.dataset.view==='book'?'book-1':'lab-1'); });
+$('#soundBtn').onclick=e=>{ soundOn=!soundOn; e.currentTarget.textContent=soundOn?'🔊':'🔇'; if(!soundOn) breathSound(false); };
+$('#fsBtn').onclick=()=>{ try{ if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); else document.exitFullscreen().catch(()=>{}); }catch(_){} };
+$$('.tg[data-t]').forEach(b=>b.onclick=()=>{ const v=!b.classList.contains('on'); b.classList.toggle('on',v); getScene('lung').setOpt(b.dataset.t,v); SFX.tick(); });
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-bmode] button'); if(!b) return; $$('button',b.parentElement).forEach(x=>x.classList.toggle('on',x===b)); const s=getScene('lung'); const hand=b.dataset.m==='hand'; s.auto=!hand; s.held=false; $('[data-handrow]',curEl).hidden=!hand; $('[data-handtip]',curEl).hidden=!hand; SFX.tick(); });
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-act] button'); if(!b) return; $$('button',b.parentElement).forEach(x=>x.classList.toggle('on',x===b)); getScene('lung').setActivity(b.dataset.a); SFX.tick();
+  getScene('lung').toast(b.dataset.a==='run'?'🏃 운동하면 몸에 산소가 더 많이 필요해서 숨을 더 빨리 쉬어요!':'🧘 쉴 때는 숨을 천천히 쉬어요.',2600); });
+$('#cmpBtn').onclick=e=>{ const b=e.currentTarget, v=!b.classList.contains('on'); b.classList.toggle('on',v); getScene('model').setCompare(v); SFX.tick(); };
+document.addEventListener('click',e=>{ const c=e.target.closest('.cover'); if(c&&!c.classList.contains('open')){ c.classList.add('open'); SFX.pop(); } });
+document.addEventListener('click',e=>{ const b=e.target.closest('.ch button'); if(!b) return; const ch=b.parentElement; $$('button',ch).forEach(x=>x.classList.toggle('sel',x===b)); ch.classList.remove('right','wrong'); SFX.tick(); const qid=ch.dataset.quiz; if(!qid) return;
+  const ok=b.textContent===ch.dataset.ans; ch.classList.add(ok?'right':'wrong'); ok?SFX.ok():SFX.no();
+  if(qid==='q1'){ const fb=$('[data-fb=q1]'); fb.className='fb '+(ok?'ok':'no'); fb.textContent=ok?'⭕ 정답! 숨을 들이마시면 공기가 코 → 숨관 → 숨관가지 → 폐로 들어가요.':'❌ 공기가 폐로 “들어가는” 때를 생각해 봐요.'; }
+  const grp=(pre,fbk,msg)=>{ if(!qid.startsWith(pre)) return; const all=$$(`[data-quiz^=${pre}]`).every(c=>c.classList.contains('right')); const fb=$(`[data-fb=${fbk}]`); fb.className='fb '+(all?'ok':''); fb.textContent=all?msg:''; };
+  grp('f','fn','🎉 숨관과 숨관가지의 기능을 모두 맞혔어요!'); grp('b','body','🎉 들이마실 때는 가슴이 부풀고, 내쉴 때는 오므라들어요!'); grp('m','mdl','🎉 공기를 불어 넣으면 종이봉투(폐)가 부풀어요. 숨을 들이마시면 우리 폐도 이렇게 부풀어요!'); });
+/* 정리: 경로 */
+const PATH_ANS=['숨관','숨관가지','폐','숨관가지','숨관','코']; let actSlot=0;
+function buildPath(){ $$('.pth .slot').forEach(s=>{ s.textContent=''; s.className='slot'; s.onclick=()=>{ if(s.textContent){ s.textContent=''; s.className='slot'; } actSlot=+s.dataset.s; markAct(); }; }); actSlot=0; markAct();
+  const t=$('#pathTray'); t.innerHTML=''; ['코','숨관','숨관가지','폐','식도','위'].forEach(n=>{ const c=document.createElement('button'); c.className='nchip'; c.textContent=n; t.appendChild(c);
+    c.onclick=()=>{ const sl=$$('.pth .slot'); let s=sl[actSlot]; if(!s||s.textContent) s=sl.find(x=>!x.textContent); if(!s) return; s.textContent=n; s.className='slot fill'; SFX.tick(); $('#pathFb').textContent=''; const nx=sl.find(x=>!x.textContent); actSlot=nx?+nx.dataset.s:-1; markAct(); }; }); }
+function markAct(){ $$('.pth .slot').forEach(s=>s.classList.toggle('act',+s.dataset.s===actSlot)); }
+buildPath();
+$('#pathCheck').onclick=()=>{ const sl=$$('.pth .slot'); if(sl.some(s=>!s.textContent)){ $('#pathFb').className='fb no'; $('#pathFb').textContent='빈칸을 모두 채워 주세요.'; SFX.no(); return; }
+  let ok=0; sl.forEach((s,i)=>{ const r=s.textContent===PATH_ANS[i]; s.classList.toggle('right',r); s.classList.toggle('wrong',!r); if(r) ok++; });
+  const fb=$('#pathFb'); if(ok===6){ fb.className='fb ok'; fb.textContent='🎉 정답! 들이마실 때 코 → 숨관 → 숨관가지 → 폐, 내쉴 때 폐 → 숨관가지 → 숨관 → 코예요.'; SFX.yay(); } else { fb.className='fb no'; fb.textContent=`${ok}/6개 맞았어요. 틀린 칸을 눌러 비우고 다시 해 봐요!`; SFX.no(); } };
+$$('.faces').forEach(f=>$$('button',f).forEach(b=>b.onclick=()=>{ $$('button',f).forEach(x=>x.classList.toggle('on',x===b)); SFX.pop(); }));
+
+/* ---------- 시작 ---------- */
+try{ initTextures(); }catch(err){ console.error(err); }
+const startId=(location.hash||'').slice(1);
+showPage($(`.page[data-id="${startId}"]`)?startId:'book-1',false);
+window.__S=SCENES;
+</script>
+<script>
+setTimeout(function(){ if(!window.__S){ document.querySelectorAll('.stage').forEach(function(s){ s.innerHTML='<div class="boot">3D 화면을 불러오지 못했어요.<br>인터넷 연결을 확인하고 새로고침해 주세요.</div>'; }); } },9000);
+</script>
+</body>
+</html>
